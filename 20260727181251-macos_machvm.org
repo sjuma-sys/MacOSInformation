@@ -1,0 +1,37 @@
+:PROPERTIES:
+:ID:       cb954714-22bb-4698-a6e9-d3b92b83c35a
+:END:
+#+title: Mach VM
+
+Virtual memory in [[id:b2f35b57-edf6-434a-92aa-4e53fd930449][XNU]] is Mach's, not BSD's. Understanding vm_map is essential for exploitation, RE and debugging. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the object model
+- each task has a *vm_map* = an ordered list of *vm_map_entry* (a region: start, end, protection, the backing object)
+- entries point at *vm_object* = a collection of pages, which may be backed by a *memory object* (a file via the pager, or anonymous/swap)
+- *pmap* is the hardware-specific layer (page tables). vm_map is machine-independent, pmap is arm64/x86 specific
+- copy-on-write is native: fork, and shared read-only mappings, share objects until written
+
+* protections
+- each region has current + max protection (r/w/x). *W^X* is enforced - you cannot have write+execute, and max_protection caps what you can ever mprotect to (see [[id:d5b866ac-68be-43d7-a1fa-7e4d20b966a0][ModernAntiExploitation]])
+- JIT needs special MAP_JIT regions + per-thread toggling on [[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]]
+
+* the API (mach_vm_*)
+- operates on a *task port* (see [[id:88d472c2-752d-4871-bbba-cd8801ccda02][Mach IPC & Ports]]) so you can operate on OTHER tasks if you hold their port:
+  - *mach_vm_allocate / deallocate*
+  - *mach_vm_read / write* - read/write another task's memory (the injection primitive)
+  - *mach_vm_protect* - change perms
+  - *mach_vm_remap* - map another task's memory into yours (powerful, used in exploits & in dyld shared cache mapping)
+  - *mach_vm_region / region_recurse* - walk another task's map (this is what vmmap uses)
+- BSD *mmap/mprotect/munmap* are thin wrappers that ultimately drive vm_map
+
+* the shared region
+- the [[id:433504f9-7c04-4551-8eff-6180407b80ad][dyld shared cache]] is mapped as a shared region into every process at one randomized slide - saves memory and is why all system libs share an ASLR base per boot
+
+* debugging / observing
+- *vmmap <pid>* - dump the regions of a process (see the mach-o segments, the shared cache, stacks, MALLOC zones, __TEXT/__DATA)
+- *vmmap -pages*, *vmmap --summary*
+- lldb: *image list* for load addresses, *memory region <addr>*
+- more in [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][Performance & Tracing Tools]]
+
+* exploitation relevance
+- kernel VM bugs (physical use-after-free "PUAF", the whole vm_map/vm_object refcount + copy family) are the backbone of modern kernel exploits. primitives like *mach_vm_remap* and page-table confusion are how you turn a bug into arbitrary kernel r/w before fighting PPL/SPTM

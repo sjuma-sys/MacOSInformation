@@ -1,0 +1,25 @@
+:PROPERTIES:
+:ID:       5acf211b-a96d-4fdc-be24-1fd639158e2a
+:END:
+#+title: MACF
+
+The Mandatory Access Control Framework (TrustedBSD MACF) - the kernel plumbing that *every* modern macOS security feature hangs off. The book never mentions it but [[id:023664b9-7735-435a-acec-b887156aeafb][sandbox]], [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]], [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]] and [[id:4549c774-a44c-4af1-9087-c9035a228603][TCC]] are all built on it. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* what it is
+- a framework ported from TrustedBSD into [[id:b2f35b57-edf6-434a-92aa-4e53fd930449][XNU]]'s BSD half that scatters *policy hooks* through the kernel at security-relevant points: process exec, file open, mmap, mount, signal, socket ops, mach ops, etc
+- at each hook the kernel calls out to every registered *MAC policy module* which votes allow/deny
+- so it's a pluggable reference monitor - the mechanism, and the policies plug in
+
+* the policy modules (the "kexts" that implement security)
+- *Sandbox.kext* (Seatbelt) - evaluates the SBPL profile for the process at each hook -> [[id:18ebcc74-3a1d-4150-bc52-d803897797a1][Sandbox Internals]]
+- *AMFI.kext* - code signing / entitlement / library-validation decisions -> [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]]
+- *Quarantine* (the com.apple.quarantine handling for [[id:6ee75269-c2a4-4aa4-8a07-7d1e404c4b5a][Gatekeeper]])
+- SIP/rootless enforcement, and the endpoint of what [[id:be6bd260-d8f9-4c95-aeb7-a3dad6786f13][EndpointSecurity]] / older kauth hooked
+
+* labels
+- MACF can attach *labels* to objects (vnodes, processes, ports) so a policy can carry state - e.g. the sandbox container a vnode belongs to, an app's signing info
+
+* why it matters
+- this is the unifying answer to "how does macOS enforce all this?": one hook layer, many policies. a "sandbox escape" or "SIP bypass" ultimately means making a MACF hook return allow when it shouldn't (bug in a policy module, or reaching an op that has no hook)
+- the *mac_policy_ops* struct is a giant table of hook fn pointers - reversing it tells you exactly what a policy checks
+- kernel r/w exploits often target these policy structures / the "am I a platform binary" flags to neuter enforcement

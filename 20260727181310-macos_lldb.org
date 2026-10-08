@@ -1,0 +1,30 @@
+:PROPERTIES:
+:ID:       be566665-b445-4b29-92d3-85fcd94048dd
+:END:
+#+title: lldb
+
+The debugger. *gdb is dead on macOS* - the [[id:2bfa84c8-98dd-4601-8f75-67be82fa9b83][Tracing & debugging]] note's gdb commands don't apply anymore; lldb (LLVM) is the only real option and it's what Xcode drives. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* attaching (and why it often fails)
+- *lldb -p <pid>* / *lldb -n <name>* / *lldb ./bin* then *run*
+- attaching to another process needs to beat [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]]/[[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]]: you can debug your *own* processes, but Apple/platform binaries and hardened-runtime apps refuse unless SIP is off or they carry get-task-allow. this uses [[id:88d472c2-752d-4871-bbba-cd8801ccda02][task ports]] under the hood via *debugserver*
+- lldb needs to be signed with debugging entitlements (Xcode's is); *debugserver* is the actual stub
+
+* core commands (gdb -> lldb rosetta)
+- breakpoints: *b main* / *breakpoint set -n func* / *-a <addr>* / *breakpoint set -r <regex>* (great with objc: *b -r "\[MyClass "*)
+- run/step: *r*, *c* (continue), *n* (next), *s* (step), *si/ni* (instr), *finish*
+- registers: *register read* / *register read x0 pc sp* , *register write x0 1*
+- memory: *memory read/write*, *x/16xg <addr>* , *memory region <addr>*
+- stack: *bt* / *bt all* , *frame select N*, *frame variable*
+- images: *image list* (load addrs + slides), *image lookup -a <addr>* (what's here), *image lookup -rn <regex>* (find symbols/methods), *image dump sections*
+- disasm: *disassemble -n func* / *dis -s <addr> -c 20* / *dis -F intel*
+- eval: *p expr*, *po <objcobj>* (print object desc), *expr -- (int)getpid()* (call functions in target)
+
+* objc / swift niceties
+- *po* uses -debugDescription; *expr -l objc -O -- obj*; *thread info*; block/queue names via GCD ([[id:9abafa8b-2560-4661-8762-353388054edb][libdispatch]])
+- watchpoints: *watchpoint set variable x* / *watchpoint set expression -- addr*
+- Python: *script* drops into embedded python; write commands with the lldb SB API (automate triage)
+
+* kernel + cores
+- kernel debugging (KDP, KDK macros) -> [[id:fef29f8b-9378-4407-b2b7-c19d2b5868ca][Kernel Debugging & Panics]]
+- core dumps: *lldb -c core.file*; generate with *gcore <pid>* / *sample* -> [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][Performance & Tracing Tools]]

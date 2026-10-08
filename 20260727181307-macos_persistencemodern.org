@@ -1,0 +1,31 @@
+:PROPERTIES:
+:ID:       38799f74-42b0-45b9-afcb-6191109245b1
+:END:
+#+title: Persistence (modern)
+
+The full modern persistence catalog - a big expansion of the tiny [[id:2deeccc8-b65c-4800-9f9b-ba0eaba32580][persistence]] note (which only listed cron + LaunchAgents). Cross-ref [[id:fed28c72-5b99-4484-a2f0-7aa7ee7fdb6b][launchd]] and [[id:0361e3e2-1087-49a3-b7e6-a3c840d614af][Login Items & BTM]]. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* launchd jobs (still the most common)
+- ~/Library/LaunchAgents, /Library/LaunchAgents, /Library/LaunchDaemons (the /System ones are [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]]-sealed, can't be abused)
+- NOTE: since Ventura, creating any of these fires a user notification + shows in Login Items via *BackgroundTaskManagement* -> [[id:0361e3e2-1087-49a3-b7e6-a3c840d614af][BTM]]. persistence is no longer silent
+
+* login / session
+- *Login Items* (modern SMAppService, or legacy shared file list) - launched at login
+- *LaunchAgents* with RunAtLoad
+- *loginwindow* hooks (LoginHook/LogoutHook - deprecated), user *~/Library/Preferences* login item lists
+
+* dylib-based (need to beat library validation, see [[id:cfdfddc9-2fac-421d-a105-9983b780b9f6][dyld]]/[[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]])
+- *dylib hijacking* - app with a weak @rpath and disable-library-validation
+- *DYLD_INSERT_LIBRARIES* via a plist EnvironmentVariables (blocked for hardened/platform binaries)
+- *plugins* - apps that load bundles from a writable plugins dir; *QuickLook* generators, *Spotlight importers* (.mdimporter), *Audio Unit* plugins, *color pickers*, *Screen Savers*, *Mail bundles* (locked down now), *Finder Sync* extensions
+
+* app/system extensions
+- *Configuration Profiles* (.mobileconfig / MDM) - install payloads (a very stealthy, often overlooked persistence + policy vector)
+- [[id:e136fffc-9d87-4d4d-b639-7346e75ab9e3][System/Network/Endpoint extensions]], *cron* (/etc/cron*, *at*), *periodic* (/etc/periodic), *emond* (removed in recent OS), *~/.zshrc* / shell rc files, *sudoers*
+- *reopen windows* / saved app state, *Automator*/*Folder Actions*, *AppleScript* + *osascript* login stubs
+
+* firmware / lower (advanced)
+- EFI on intel, but sealed boot chain ([[id:24793b48-0d1e-4929-8f8b-6161a6a517a4][BootChain]]) makes below-OS persistence very hard on modern machines
+
+* hunting
+- *KnockKnock* / *BlockBlock* (objective-see) enumerate all of the above. manually: walk every LaunchAgents/Daemons dir, Login Items, profiles (*profiles list*), the plugin dirs, cron/periodic. cross-check code signatures + [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][DFIR]] timeline

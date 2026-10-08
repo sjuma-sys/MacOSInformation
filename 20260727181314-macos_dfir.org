@@ -1,0 +1,32 @@
+:PROPERTIES:
+:ID:       6fed62d7-fa24-4faf-8cee-90b46b916f7b
+:END:
+#+title: DFIR Artifacts
+
+Where the forensic evidence lives on a modern mac - the timeline sources an analyst reconstructs. Ties together [[id:c37cdbd3-c8af-4240-9e51-2d62e2345299][unified logging]], [[id:aa56c47e-71af-4210-8713-a54d02859fc8][metadata]], [[id:0361e3e2-1087-49a3-b7e6-a3c840d614af][BTM]]. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* execution / program history
+- *unified log* (short retention) - process launches, exec, network, denials -> [[id:c37cdbd3-c8af-4240-9e51-2d62e2345299][log show]]
+- *[[id:be6bd260-d8f9-4c95-aeb7-a3dad6786f13][EndpointSecurity]]* telemetry (if an EDR was running) - the richest exec/file record
+- *KnowledgeC.db* (~/Library/Application Support/Knowledge/knowledgeC.db) + *Spotlight* - app usage, focus
+- *quarantine event db* - *~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV2* (sqlite): what was downloaded, from where, when, by which app - excellent "patient zero" source
+- shell histories (~/.zsh_history), *sudo* logs, *last*/*utmpx*
+
+* persistence / config
+- launchd dirs, Login Items, *BTM* db (*sfltool dumpbtm*) -> [[id:38799f74-42b0-45b9-afcb-6191109245b1][Persistence]] / [[id:0361e3e2-1087-49a3-b7e6-a3c840d614af][BTM]]
+- *config profiles* (*profiles list*), *TCC.db* (what got privacy grants -> [[id:4549c774-a44c-4af1-9087-c9035a228603][TCC]]), cron/periodic
+
+* filesystem timeline
+- *FSEvents* (/.fseventsd) - coarse record of directory changes over time (see [[id:aa56c47e-71af-4210-8713-a54d02859fc8][metadata]])
+- *Spotlight metadata* (.Spotlight-V100, mdls) - per-file kMDItem attrs incl kMDItemDownloadedDate, WhereFroms
+- APFS *snapshots* (*tmutil listlocalsnapshots /*, Time Machine) - can recover deleted/changed state ([[id:25d3f47d-2eac-4cef-abad-140722ea44be][APFS]])
+- extended attrs: *com.apple.quarantine*, *com.apple.metadata:kMDItemWhereFroms*, *com.apple.provenance*
+
+* system state / triage
+- *sysdiagnose* - the big bundle (logarchive + spindump + config + network state). *log collect* for just logs
+- browser history/caches, *~/Library/Containers* per-app data, *Notifications* db, *unifiedlogs*
+- memory: live acquisition is hard (no easy /dev/mem); *volatility* has limited mac support ([[id:af0c1c7d-6480-40fb-b7b2-8f1d73d53a5c][see finding bugs]]) - usually you rely on artifacts not RAM
+
+* tooling
+- objective-see (KnockKnock, BlockBlock, Netiquette), *mac_apt*, *AutoMacTC*, *aftermath* (jamf), Levin's tools. *fseventsparser*, *chainbreaker* (keychain), *mvt* for spyware triage
+- watch out: *log erase*, quarantine xattr stripping, and short log TTL mean collect fast + note anti-forensics

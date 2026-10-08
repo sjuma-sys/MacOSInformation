@@ -1,0 +1,29 @@
+:PROPERTIES:
+:ID:       aa239ad7-0896-47fa-a012-9065ad47a80d
+:END:
+#+title: Modern RE Tooling
+
+The reversing toolbox for [[id:c66ac780-d083-48d4-a277-e8ea053e3ffe][Mach-O]] / [[id:8140d084-9430-4851-89a4-695cc55fc85a][ObjC]] / kernelcache. Supersedes the otool-only workflow in the book's [[id:2f40ca3b-875d-4b95-895d-bf6bd17687e5][RE chapter]]. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* static - disassemblers/decompilers
+- *Hopper* - mac-native, cheap, great objc/swift + pseudocode. the go-to for quick mac work
+- *Ghidra* - free, has a decompiler, mach-o + [[id:433504f9-7c04-4551-8eff-6180407b80ad][dyld shared cache]] loader, objc scripts. good for kernelcache
+- *IDA Pro* + Hex-Rays - the heavyweight, best objc_msgSend xref resolution + arm64e/PAC handling; dyldcache + kernelcache loaders
+- *Binary Ninja* - scriptable, decent mach-o/arm64
+
+* apple/native cli (fast triage before firing up a GUI)
+- *otool* (-h -l -L -tV -s), *nm -m*, *size -m*, *strings -*, *dyld_info*, *pagestuff*, *lipo*, *codesign -dvvv*, *atos* (symbolicate)
+- *class-dump* / *dsdump* / *classdump-dyld* - reconstruct objc @interface headers from metadata
+- *jtool2* (Levin) - swiss army: signatures, entitlements, disasm, dyldcache + kernelcache. *joker* - kernelcache/kext analysis (extract kexts, symbolicate)
+- *dyld_shared_cache_util* / IDA/Ghidra scripts to extract dylibs from the cache first
+
+* dynamic - instrumentation
+- *Frida* - the big one on macOS/iOS: JS API to hook objc (ObjC.classes), C (Interceptor.attach), read/write memory, trace. *frida-trace -i "open*" -p <pid>*, *frida-trace -m "-[NSURL* ]"*. needs to beat [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]]/[[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]] to attach to protected targets
+- *lldb* -> [[id:be566665-b445-4b29-92d3-85fcd94048dd][lldb note]]; *lldb* python scripting for automated hooking
+- *[[id:a00daff0-10a5-4d51-94bc-c1e44348daa2][dtrace]]* / *[[id:9889f872-5f75-4927-a437-6278d9754569][fs_usage/dtruss]]* for syscall/library tracing
+- *DYLD_* env tracing (see [[id:cfdfddc9-2fac-421d-a105-9983b780b9f6][dyld]]), function interposing / fishhook for C rebinding
+
+* environment tips
+- do dynamic work in a *VM* (UTM/VMware/Parallels on apple silicon virtualizes macOS guests) with SIP off + a debuggable kernel, snapshotted
+- disable SIP + set amfi_get_out_of_my_way for unsigned tooling and easy attach (see [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]])
+- for kernelcache: extract with joker/img4tool from an [[id:24793b48-0d1e-4929-8f8b-6161a6a517a4][IPSW]], load in IDA/Ghidra with the right loader

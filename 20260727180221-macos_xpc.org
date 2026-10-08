@@ -1,0 +1,26 @@
+:PROPERTIES:
+:ID:       592f3484-b2e9-4d15-bd0e-811583a18688
+:END:
+#+title: MacOS XPC
+
+XPC is the IPC that modern macOS is glued together with, brokered by launchd on top of mach messages. Didnt feature in the book but its where a lot of current bugs live. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* what it is
+- lightweight message-passing IPC for privilege separation - split a risky component into its own process with fewer rights
+- two layers:
+  - *libxpc* (C) - xpc_connection_create, xpc dictionaries
+  - *NSXPCConnection* (obj-c/swift) - proxied objects over a protocol
+- launchd is the bootstrap: services register a mach name, clients look it up
+- *XPC Services* ship inside an app bundle at *Contents/XPCServices/foo.xpc*, launched on demand and torn down when idle
+- *mach services* / launchd daemons in LaunchDaemons expose a MachServices key = system wide XPC endpoints
+
+* why its a vuln goldmine
+- classic bug: a privileged XPC service *doesnt validate the caller*. it must check the peer's code signature / entitlements, ideally via the *audit token* (xpc_connection_get_audit_token / NSXPCConnection.auditToken), NOT the pid (pid reuse = race -> "shai-hulud"/pid-race style bugs)
+- if a root helper trusts any local client, any sandboxed app can call it and get a sandbox escape or LPE
+- deserialization: NSXPC over-broad allowed classes -> object injection
+- this is the usual second stage after popping a [[id:023664b9-7735-435a-acec-b887156aeafb][sandboxed]] process
+
+* recon
+- list mach/xpc endpoints: *launchctl list*  and  *launchctl print system* / *launchctl print gui/$(id -u)*
+- find services in a bundle: look in Contents/XPCServices and the Info.plist MachServices / XPCService keys
+- privileged helpers installed via SMJobBless live in */Library/PrivilegedHelperTools/* with a matching launchd plist - prime targets, check what they authenticate

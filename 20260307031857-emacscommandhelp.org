@@ -1,0 +1,9 @@
+:PROPERTIES:
+:ID:       4f53ec51-11d9-4f77-853c-81ec8a9463a2
+:END:
+#+title: Emacs Command Help
+
+To get help with a command in emacs use either C-h f and look at the adjacent source or
+C-h v to describe the variable
+C-h a to search for different functions
+C-h e shows the messages buffer where you can see previous elisp functions output for debugging

@@ -1,0 +1,24 @@
+:PROPERTIES:
+:ID:       b2f35b57-edf6-434a-92aa-4e53fd930449
+:END:
+#+title: XNUKernel
+
+* Basic overview
+Is comprised of [[id:cfe3bb0e-c360-456a-ac8a-c3e995f2e3cd][MacOSMachKernel]] and [[id:457fe001-8599-4d84-9b66-123223ffd1df][MacOSBSDKernel]] and stands for X is not Unix due to the differences between it and unix.
+
+* MacOSTools
+:PROPERTIES:
+:ID:       0f9cccc6-0e00-470a-b875-4f4144aa8674
+:END:
+[[id:a260e433-3b04-486d-b7e7-22d1591ba6af][- MACOS I/Okit]]
+- [[id:b11b5b10-c20f-4ddd-88b2-3a5ade027ed2][MACOS DarwinandFriends]]
+- [[id:752f485f-c3fb-4250-9221-e44e37359e52][MacOSotool]]
+- [[id:c97f8ead-0b34-4fe9-8304-89a179444c40][MacOS ktrace]]
+- [[id:a00daff0-10a5-4d51-94bc-c1e44348daa2][MacOS Dtrace]]
+- [[id:64919166-82d3-42e0-978a-581ed9678dbb][MacOS plutil]]
+- [[id:f4af5445-8aaa-4876-929e-807d3ce2663b][nm]]
+- [[id:8cf123bd-2672-48aa-bd83-ea9472126a00][MacOS Bonjour]]
+- [[id:c1160fca-99d3-4e52-b1ee-ba1d4c398df9][MacOS Quicktime]]
+- [[id:94b85d38-b049-4bb0-88ce-85fcdb8cddd0][MacOS lcov]]
+- [[id:b2052093-8a67-4b33-89cb-3135c0b78b65][MacOS CrashReporter]]
+- [[id:5163d967-eac3-45f1-bfa2-99213f2edcc3][MacOS GuardMalloc]]

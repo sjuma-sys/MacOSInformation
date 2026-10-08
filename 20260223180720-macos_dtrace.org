@@ -1,0 +1,42 @@
+:PROPERTIES:
+:ID:       a00daff0-10a5-4d51-94bc-c1e44348daa2
+:END:
+#+title: MacOS Dtrace
+
+Superceedes [[id:c97f8ead-0b34-4fe9-8304-89a179444c40][MacOS ktrace]] and is also used for kernel tracing of applications
+
+More information on Dtrace can be found at the link here [[https://www.brendangregg.com/dtrace.html][at this website]]
+
+Book to be read after the one im on is on dtrace linked [[file:~/Downloads/Books/dtrace-ebook.pdf][here]]
+
+One liner examples : [[id:11c3c548-651f-4834-bcb9-7104b43959eb][MacOS DtraceOneliners]]
+
+* functionality
+Uses a language called D which is s small subset of C
+Has its own chapter which we look forward to
+Entire functionality of ktrace can be replicated ina  few lines of D highlighting the power of the tool
+
+Allows users to access applications at a very low level  and even change execution flow
+
+* pREVIEW Use cases
+
+save as filemon.d the below to see files opened by preview
+
+syscall::open:entry
+/pid == $1 /
+{
+        printf("%s(%s)", probefunc, copyinstr(arg0));
+}
+syscall:close:entry
+/pid  == $1  /
+{
+        printf("\t\t = %d\n",arg1);
+}
+syscall::close:entry
+/pid == $1 /
+{
+        printf("%s(%d) \n", probefunc, arg0);
+}
+ 
+then use the command *sudo drace -qs filemon.d [pidof]* on the pid of preview to see current files open
+

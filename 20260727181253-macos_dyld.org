@@ -1,0 +1,31 @@
+:PROPERTIES:
+:ID:       cfdfddc9-2fac-421d-a105-9983b780b9f6
+:END:
+#+title: dyld
+
+The dynamic linker/loader - /usr/lib/dyld. After the kernel maps a [[id:c66ac780-d083-48d4-a277-e8ea053e3ffe][Mach-O]], dyld does everything to make it runnable. Historically a huge attack surface (env-var injection, dylib hijacking). Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* what it does at launch
+1. kernel maps the main executable + dyld itself, jumps into dyld
+2. dyld maps the [[id:433504f9-7c04-4551-8eff-6180407b80ad][dyld shared cache]] and loads dependency dylibs (LC_LOAD_DYLIB chain, resolving @rpath/@loader_path/@executable_path)
+3. *fixups*: apply the slide to pointers - old rebase/bind opcodes, or modern *chained fixups*; bind imported symbols to their definitions
+4. runs image initializers (__mod_init_func, +load, C++ ctors), then LC_MAIN
+
+* dyld generations
+- dyld2: interpret bind/rebase opcodes at launch
+- *dyld3*: moved most work to a *launch closure* built ahead of time and cached (closured), so launch is mostly mmap + apply
+- *dyld4* (current): unified, closures for cache dylibs, chained fixups everywhere. arm64e pointers are PAC-signed as part of fixups
+
+* two-level namespace
+- symbols are resolved (dylib, symbol) not flat - so two libs can export the same name. flat namespace is opt-in and enables interposing tricks
+
+* the injection / hijack surface (the classic mac tricks)
+- *DYLD_INSERT_LIBRARIES* = LD_PRELOAD equivalent, force-load a dylib. blocked for restricted/entitled/setuid binaries and under [[id:dd71c41f-c6cb-436e-a146-e45b51ffbce3][hardened runtime]]
+- *DYLD_LIBRARY_PATH / DYLD_FRAMEWORK_PATH* - override where libs load from
+- *dylib hijacking* - a binary with an @rpath-based LC_LOAD_DYLIB where a search path is writable/missing -> drop your dylib there. killed by *library validation* (same-team-id or apple signed) unless the app opts out with com.apple.security.cs.disable-library-validation
+- *interposing* - __DATA,__interpose section swaps function pointers (legit hooking, e.g. libgmalloc from [[id:5163d967-eac3-45f1-bfa2-99213f2edcc3][GuardMalloc]])
+- these all now interact heavily with [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]] / [[id:2e1db5fd-d76e-47f6-9124-4b61d30d1667][code signing]]
+
+* debugging dyld
+- *DYLD_PRINT_LIBRARIES=1* print each lib as loaded, *DYLD_PRINT_APIS*, *DYLD_PRINT_SEGMENTS*, *DYLD_PRINT_BINDINGS* (need SIP off / unrestricted target)
+- *dyld_info* inspects fixups/exports; lldb *image list* shows what's loaded

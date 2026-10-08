@@ -1,0 +1,46 @@
+:PROPERTIES:
+:ID:       af0c1c7d-6480-40fb-b7b2-8f1d73d53a5c
+:END:
+#+title: MacOS Finding Bugs
+
+There are two ways of scanning for bugs, static and dynamic
+
+* Static
+usually done by analysing code to look for issues
+you can find a list off all of the open source sourcecode for apple at www.opensource.apple.com/darwinsource
+*the source code is however usually outdated on there*
+you can however use CVS and SVN to download more up to date versions
+use *export CSROOT=:pserver:anonymous@anoncvs.opensource.apple.com:/cvs/root && cvs login* to access cvs
+use *svn checkout http://svn.webkit.org/repository/webkit.trunk Webkit* to get the webkit
+when you build some open source projects they come with .gcno files detailing how the code works
+
+** Webkit examples
+build the file using *Webkit/WebkitTools/Scripts/build-webkit -coverage*
+test coverage data (.gcno files) are being created with *./WebkitBuild/Release/testkjs* (generates .gcda files when ran)
+run the JavaScript regression tests with *WebKitTools/Scripts.run-webkit-tools* 
+After this run [[id:94b85d38-b049-4bb0-88ce-85fcdb8cddd0][MacOS lcov]] using the comand *lcov -o javascriptcore.lcov -d WebkitBuild/JavaScriptCore.build -c -b JavascriptCore*
+
+after this you can take the outputted file and run *genhtml -o javascriptcore-html -f javascriptcore.lcov* (genhtml is built into lcov), this will build a file with a nice HTML view to see the code coverage
+
+You can then grep through this shit for is in the code like cpy for memory copies
+
+
+
+* Dynamic
+often called fuzzing consists of sending bad inputs to a program to see what sticks
+has the advantage of not having false positives but there are infinite combinations to try
+If there are large codebases it can be used to look and test lines to reduce manual labour for testing
+
+There are two different types of fuzzing, one is mutation based which takes valid inputs and malforms them and the other is generation based which takes the specification for the inputs and sees if any anomalies can be returned for more information on fuzzing there is a recommendation to visit Fuzzing: Brute Force Vulnerability DIscovery by sutton greent and amini
+
+[[id:b084111e-114b-4333-94b4-103d5b56f1c2][NetworkFuzzingExample]]
+
+[[id:2e3218fb-8d2c-4e7f-baf0-5382a5ab85ea][FIleFuzzingExamples]]
+
+* The best?
+Use a combination of the two different examples to ensure you are being as effective as possible
+
+
+
+
+

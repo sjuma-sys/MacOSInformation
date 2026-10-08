@@ -1,0 +1,26 @@
+:PROPERTIES:
+:ID:       5ac1af8c-d487-48c7-b09b-6a2b33ac88bf
+:END:
+#+title: AuthorizationServices
+
+How macOS does "type your password to allow this" and how apps install root helpers. A rich local-privilege-escalation surface. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* Authorization Services (Security.framework)
+- the API behind the padlock / admin prompts. an app asks *AuthorizationCreate* + *AuthorizationCopyRights* for a named *right*; the *authd* daemon consults the *policy database* to decide (prompt user? require admin? allow?)
+- the policy db: */var/db/auth.db* (sqlite), seeded from */System/Library/Security/authorization.plist*. rights like *system.privilege.admin*, *com.apple.something*
+- *right rules* specify class (user, rule, allow, deny), whether admin group is required, whether auth is shared/cached, timeout
+- misconfigured/custom rights (an app that defines a weak rule, or a right that doesn't actually require auth) = LPE. *security authorizationdb read <right>* to inspect
+
+* privileged helper tools (SMJobBless)
+- an app that needs root installs a *privileged helper* into */Library/PrivilegedHelperTools/* + a launchd daemon plist, blessed via *SMJobBless* (now *SMAppService* on 13+)
+- both sides pin each other by code-signing requirement: the app's Info.plist *SMPrivilegedExecutables* names the helper's DR; the helper's Info.plist *SMAuthorizedClients* names the app's DR
+- the helper then exposes an [[id:592f3484-b2e9-4d15-bd0e-811583a18688][XPC]] / mach service that runs as root
+
+* why this is an LPE goldmine
+- the #1 bug: a root helper that *doesn't properly validate its XPC client* (checks pid not [[id:88d472c2-752d-4871-bbba-cd8801ccda02][audit token]], or a too-loose SMAuthorizedClients DR, or no check at all) -> any local process calls it and gets root. tons of 3rd party updaters/VPNs/AV have shipped this
+- helper methods that take a path/command and run it as root without validation = instant escalation
+- disk-writable helper or plist (wrong perms) = replace it
+- *SMJobBless* validation flaws, TOCTOU on the helper binary
+
+* auditing
+- enumerate: *ls -l@ /Library/PrivilegedHelperTools*, read each plist's MachServices, dump the helper's *SMAuthorizedClients* DR (*codesign -d --entitlements* / jtool), then see how the XPC listener authenticates. compare to [[id:2e1db5fd-d76e-47f6-9124-4b61d30d1667][the requirements language]]

@@ -1,0 +1,59 @@
+:PROPERTIES:
+:ID:       c1160fca-99d3-4e52-b1ee-ba1d4c398df9
+:END:
+#+title: MacOS Quicktime
+
+
+Quicktime is MacOS native file player for videos or GIFs
+
+It has a native file format of .mov
+
+** .mov
+The .mov file has many atoms inside which make up the .mov file structure, some of the atoms are as below:
+    - moov (movie)
+    - mvhd (movie header)
+    - ftyp (filetype)
+    - 
+
+you can search for the diffierent structures of the atoms using [[id:752f485f-c3fb-4250-9221-e44e37359e52][MacOS otool]] with the -L
+    - otool -L QUicktime\ Player | xargs grep "moov"
+
+** RTSP
+RTSP (Real time straming protocol) is used to access metafile information and issue  streaming commands. It uses Realtime transport protocol and has a few methods:
+    - Options (get available methods)
+    - Setup (initialize session)
+    - Announce (get description of media object)
+    - Describe (Get description of media object)
+    - Play (start playback)
+    - Record (start redording)
+    - Redirect (Redirect client to new server)
+    - Pause (Stop delivery but maintain state)
+    - Set_parameter (set a device or control parameter)
+    - teardown (end session)
+
+
+When revieing this infomation the transmission goes like this (p71 for more info)
+Client -> Describe -> server -> client
+Client -> Setup -> server -> client
+Server -> Play -> server -> client
+Server -> RTP AUDIO/Video -> client
+Server -> RTCP -> server
+Client -> Pause -> server -> client
+Client -> Teardown -> server -> client
+
+Source code for the darwin streaming server which quicktime uses is available from http://dss.macosforge.org , site is down rn so mabye lookup on archive sometime later
+
+
+
+
+
+
+
+
+
+
+** Exploiting quicktime libraries that use RTSP
+To be able to exploit quicktime you can use the places where you know there will be code related to RTSP as it si riddled with vulnerabilities
+One way to find this is with the commmand below
+*find -X /System/Library -type f 2>/dev/null | grep 'Contents/MacOS' | xargs grep TEARDOWN 2> /dev/null*
+after identifying the TEARDOWN communication in the libraries you can see which libraries are loaded by quicktime by loading it into gdb and running the *info sharedlibrary* command

@@ -1,0 +1,36 @@
+:PROPERTIES:
+:ID:       24793b48-0d1e-4929-8f8b-6161a6a517a4
+:END:
+#+title: MacOS BootChain
+
+How a mac actually boots. Totally different on [[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]] vs intel. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]]. The whole point is a *chain of trust*: each stage cryptographically verifies the next.
+
+* apple silicon (iOS-style)
+- *BootROM* (SecureROM) - immutable, burned into the SoC at fab. this is the hardware root of trust. inits, loads next stage from NOR flash
+- *LLB* / *iBoot* - the second-stage bootloader (like on iphone). verifies + loads the kernelcache. also where DFU lives
+- *LocalPolicy* - per-install boot policy object, signed by the SEP, holds the security level (Full/Reduced/Permissive) + whether SIP/kext/etc are relaxed. this is how each OS install has its own boot security. managed by *bputil* / *csrutil* in [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][recoveryOS]]
+- *kernelcache* (boot kernel collection, BKC) - prelinked xnu + boot-time kexts, signed and verified. built by *kmutil*
+- boots the *sealed system volume* -> [[id:25d3f47d-2eac-4cef-abad-140722ea44be][APFS]] SSV
+- *SEP* has its own boot chain (sepOS) in parallel
+- there is no EFI, no NVRAM boot-args freedom like intel. no external bootloader (rEFInd etc)
+
+* intel + T2
+- *BootROM -> EFI firmware* (UEFI). apple's EFI is the platform firmware
+- *T2* chip (2018-2020 intel macs) = a bridgeOS coprocessor that IS a secure enclave + does secure boot of the intel side, disk encryption, touch id. T2 verifies the EFI/boot.efi
+- *boot.efi* -> loads prelinkedkernel/kernelcache -> xnu
+- secure boot policy set in Startup Security Utility (Full / Medium / No Security)
+- older/no-T2 intel: classic EFI, much weaker, allows unsigned kexts more easily
+
+* boot-args & nvram
+- kernel boot flags live in NVRAM var *boot-args*: *sudo nvram boot-args="-v"* (verbose), *amfi_get_out_of_my_way=1*, *-s* (single user, mostly gone), *keepsyms=1*, *debug=0x...* for [[id:fef29f8b-9378-4407-b2b7-c19d2b5868ca][kernel debugging]]
+- many boot-args require SIP off / Permissive security to take effect
+- read all nvram: *nvram -p*
+
+* recovery / DFU / restore
+- *recoveryOS* - a full recovery environment (its own mini OS). apple silicon: hold power on boot. contains Terminal, Disk Utility, csrutil, Startup Security, reinstall
+- *fallback recovery* (1TR "one true recovery") needed for lowering security on apple silicon
+- *DFU mode* - lowest level, restore/revive the machine with *Apple Configurator* or *idevicerestore*, flashes an *IPSW*
+- *ramrod / restore ramdisk* - the restore OS booted from the IPSW during a full DFU restore
+
+* first userland
+- kernel hands off to *[[id:fed28c72-5b99-4484-a2f0-7aa7ee7fdb6b][launchd]]* as PID 1, which brings up the rest of the system from its plists

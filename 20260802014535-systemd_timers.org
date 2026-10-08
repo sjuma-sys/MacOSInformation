@@ -1,0 +1,38 @@
+:PROPERTIES:
+:ID:       6aaa5d92-876c-4c3c-a602-8e07c725f090
+:END:
+#+title: Systemd Timers for Periodic Checks
+#+filetags: :security:selfhosting:
+
+Timers instead of cron for monitoring and reports. Part of
+[[id:6781236f-8a25-4e1a-88c4-8c22af0c2aa9][Self-Hosted Service Hardening]].
+
+* Daily report at a fixed time
+#+begin_src conf
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true          # run on next boot if the machine was off
+RandomizedDelaySec=1800  # be polite to remote APIs
+#+end_src
+
+* Frequent probe with an interval
+#+begin_src conf
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=3min     # 3 min after the last run *finished*
+AccuracySec=30s          # default is 1min slack; tighten if it matters
+#+end_src
+
+* A failing probe is not a unit failure
+If the job's whole purpose is to exit non-zero when something is wrong:
+#+begin_src conf
+[Service]
+SuccessExitStatus=0 1
+#+end_src
+Otherwise the unit shows =failed= permanently and you learn to ignore it.
+
+* Inspect
+#+begin_src bash
+systemctl --user list-timers 'myprefix-*' --no-pager
+journalctl --user -u myunit -n 30
+#+end_src

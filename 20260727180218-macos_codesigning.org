@@ -1,0 +1,37 @@
+:PROPERTIES:
+:ID:       dd71c41f-c6cb-436e-a146-e45b51ffbce3
+:END:
+#+title: MacOS CodeSigning
+
+Code signing is now load-bearing for the whole OS, enforced in-kernel by *AMFI* (AppleMobileFileIntegrity) + amfid in userspace. The book predates almost all of this. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* codesign tool
+- *codesign -dvvv /path/bin*  - dump signing info (authority chain, team id, cdhash)
+- *codesign --verify --deep --strict app.app*  - verify integrity
+- *codesign -d --entitlements :- /path/bin*  - dump entitlements plist
+- *codesign -s "Developer ID Application: name" --options runtime app.app*  - sign w/ hardened runtime
+- ad-hoc sign (no identity): *codesign -s - bin*  - required just to *run* on [[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]]
+
+* what a signature contains
+- code directory with per-page hashes (cdhash) so pages are verified as theyre mapped in - tampering a mapped binary faults
+- team identifier, and the entitlements blob
+- "platform binary" flag for apple's own binaries (extra trust, SIP-protected)
+
+* entitlements
+- key/value plist baked into the signature granting capabilities. AMFI/sandbox/TCC read them to decide what youre allowed to do. examples:
+  - com.apple.security.app-sandbox  -> opt into the [[id:592f3484-b2e9-4d15-bd0e-811583a18688][sandbox]]
+  - com.apple.security.get-task-allow  -> debuggable (dev builds)
+  - com.apple.developer.endpoint-security.client -> use [[id:be6bd260-d8f9-4c95-aeb7-a3dad6786f13][EndpointSecurity]]
+  - com.apple.private.* -> apple-only, need a provisioning profile / platform binary
+- you cant just add powerful entitlements: they have to be authorized by the signing cert or youre not a platform binary
+
+* hardened runtime
+- opt-in (required for notarization). tightens a signed process:
+  - blocks DYLD_INSERT_LIBRARIES and other DYLD_* injection
+  - *library validation* - only load libs signed by same team id or apple (kills dylib hijack / injection)
+  - no unsigned executable memory unless com.apple.security.cs.allow-unsigned-executable-memory / allow-jit
+- exceptions are themselves entitlements, so you can see how sketchy an app is by dumping them
+
+* attacker relevance
+- dylib hijacking / DYLD injection (old school macOS tricks) are mostly killed by library validation + hardened runtime, EXCEPT against apps that opt out via those allow-* entitlements -> hunt for those
+- getting your unsigned code to run at all now needs a signing bug, an entitled victim, or an amfi/codesigning bypass

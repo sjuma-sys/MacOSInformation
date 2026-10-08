@@ -1,0 +1,22 @@
+:PROPERTIES:
+:ID:       cfe3bb0e-c360-456a-ac8a-c3e995f2e3cd
+:END:
+#+title: MacOSMachKernel
+
+* Basic overview *
+
+- Designed to be a microkernel
+- runs code in tyhe same address space as the [[id:457fe001-8599-4d84-9b66-123223ffd1df][MacOSBSDKernel]] 
+
+** Handles
+- Low level operations
+  - Processor scheduling
+  - multitasking
+  - virtual memory management
+    
+** Security
+- Security is based on port rights as opposed BSD's process ownership
+- Allows user space to interact with the kernel opening up priv esc's
+
+** Differs from BSD because
+- Threads are the fundamental unit of a process 

@@ -1,0 +1,27 @@
+:PROPERTIES:
+:ID:       4549c774-a44c-4af1-9087-c9035a228603
+:END:
+#+title: MacOS TCC
+
+Transparency, Consent & Control - the privacy framework, since 10.14 Mojave and expanded every release. Its the thing throwing "X wants to access your camera/files" popups. Enforced by *tccd*. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* what it guards
+- camera, microphone, location, screen recording, accessibility (huge - lets you drive other apps)
+- contacts, calendars, reminders, photos
+- Full Disk Access (FDA), Files & Folders, Desktop/Documents/Downloads
+- Automation / AppleEvents (app A scripting app B) - the modern version of the remote apple events in [[id:25ffdd60-6d63-4429-b617-9a7895238146][AttackSurface]]
+
+* the database
+- user db: *~/Library/Application Support/com.apple.TCC/TCC.db*
+- system db: */Library/Application Support/com.apple.TCC/TCC.db*  (SIP protected, needs FDA even to read)
+- its sqlite - *sqlite3 TCC.db "select * from access"* if you have access. grants keyed by client bundle id / signing identity
+- reset a permission: *tccutil reset Camera com.some.app*  (or *tccutil reset All*)
+
+* how identity is decided
+- tcc attributes a request to the *code signature* of the calling app (not just path/pid), so you cant trivially masquerade
+- an app inherits/needs its own grant; injecting into an already-granted app is a classic way to borrow its TCC rights (hence hardened runtime + library validation matter, see [[id:dd71c41f-c6cb-436e-a146-e45b51ffbce3][CodeSigning]])
+
+* bypasses (its own cottage industry)
+- historically: writing the user TCC.db directly (pre-SIP-protection), env/dylib injection into entitled apps, powerdir (CVE-2021-30970), /usr/bin/grep-the-db when you have FDA, mounting/relocating the home dir, click-through/synthetic-event tricks via Accessibility
+- FDA is the crown jewel - an app with Full Disk Access can read the user TCC.db and most everything else
+- Terminal / your shell needs FDA to touch protected paths even as your own user - very common gotcha when scripting

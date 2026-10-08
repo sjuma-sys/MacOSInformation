@@ -1,0 +1,24 @@
+:PROPERTIES:
+:ID:       752f485f-c3fb-4250-9221-e44e37359e52
+:END:
+#+title: MacOS otool
+
+* description
+used to get the dynamic libraries used by an application and fills the role of ldd, nm, objdump form linux
+
+* usage
+- otool -L /binary/
+  - gets dynamic libraries
+
+- otool -tv /binary/
+    - gets disasembly listing for ther libraries
+
+- otool -f
+  - Reveals universal headers from binaries
+
+- otool -h
+   - Reveals the Mach headers
+
+- otool -l
+  - Reveals the load command
+  

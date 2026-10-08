@@ -1,0 +1,28 @@
+:PROPERTIES:
+:ID:       25d3f47d-2eac-4cef-abad-140722ea44be
+:END:
+#+title: MacOS APFS
+
+APFS replaced HFS+ as the default filesystem in 10.13 High Sierra. Matters for forensics, encryption and the modern read-only system layout. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* structure
+- a *container* (single APFS partition) holds multiple *volumes* that share free space
+- default install is a *volume group*: a read-only *System* volume + a writable *Data* volume, unified by firmlinks so it looks like one tree
+- copy-on-write, cheap *snapshots* and file *clones* (instant copies). *tmutil localsnapshot*, snapshots underlie Time Machine + safe updates
+
+* SSV (signed system volume)
+- since 11 Big Sur the System volume is a *sealed, cryptographically hashed read-only snapshot*. a merkle tree over the whole volume is verified at boot
+- editing anything in /System breaks the seal -> wont boot. this is why [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]] off *still* doesnt let you persist in /System, and why patching a lib on disk is dead (see [[id:433504f9-7c04-4551-8eff-6180407b80ad][dyldSharedCache]])
+
+* encryption / secure enclave
+- FileVault is now built on APFS native encryption (per-volume)
+- *Secure Enclave (SEP)* is a separate coprocessor in the SoC ([[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]]) / T2 on late intel:
+  - stores keys that never leave it, does Touch ID / Face ID matching
+  - wraps the FileVault/volume keys - data at rest is tied to the SEP, so pulling the flash off the board gets you nothing
+  - handles per-file *data protection* classes (ported from iOS) - keys tied to device + passcode state
+- anti-forensics angle: on a powered-off apple silicon mac the user data is SEP-wrapped, live acquisition/DFIR usually needs the box unlocked
+
+* commands
+- *diskutil apfs list*  - containers/volumes/roles
+- *diskutil apfs listSnapshots /*  - snapshots
+- *fdesetup status*  - filevault state

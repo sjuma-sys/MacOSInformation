@@ -1,0 +1,10 @@
+:PROPERTIES:
+:ID:       5163d967-eac3-45f1-bfa2-99213f2edcc3
+:END:
+#+title: MacOS GuardMalloc
+
+Guard malloc allows yuou to use alternativa malloc that can be used to see if there is any writes beyond the bounds of malloc being done. It is done with the use of gdb by injecting its library seen at /usr/lib/libgmallov.dylib
+
+YOu can also use in GDB  a function named set env MALLOC_ALLOW_READS=1
+
+That function allows for you to be able to read past th ebuffer to see what is going on during crashes or overflows

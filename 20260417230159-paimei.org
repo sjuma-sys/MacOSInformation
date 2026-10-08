@@ -1,0 +1,24 @@
+:PROPERTIES:
+:ID:       e3116b20-0993-4a79-a52f-a46d62f78fcc
+:END:
+#+title: PaiMei
+
+Pai mei can be used to facilitate the reverse engineering of different tools on MACOS.
+
+You use pai mei by telling it where things begin, this can be found out by using a tool like ida pro or ghidra. If using IDA select the basic blocks analysis and then load this file in called pida.py that would consist of this code
+
+#!python
+
+import pida
+
+p = pida.load("Calcolator.pida")
+
+for f in p.nodes.values():
+    print("Function %s starts at %x and ends at %x % (f.name, f.ea_start, f.ea_end))
+    for bb in f.nodes.values():
+        print("Basic block %x", % bb.ea_start)
+
+After this you need to find out which library to focus on which can be done using the [[id:752f485f-c3fb-4250-9221-e44e37359e52][MacOS otool]] to find a library to focus on
+
+following gettin the necessary information you can now start to run pai mei more information can be seen at pages 123-127
+

@@ -1,0 +1,27 @@
+:PROPERTIES:
+:ID:       9e71c276-f849-4407-ba28-128e2e9fec1d
+:END:
+#+title: IOKit UserClients
+
+The single biggest *local kernel attack surface* on macOS/iOS. Extends the [[id:a260e433-3b04-486d-b7e7-22d1591ba6af][I/O Kit]] note into why drivers matter for exploitation. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the model
+- I/O Kit is C++ (Embedded C++ subset) - drivers are objects in a class tree (IOService), living in the *IORegistry*
+- a userland process opens a driver by matching a service then calling *IOServiceOpen* -> gets an *IOUserClient* (the driver's userland-facing object, over a [[id:88d472c2-752d-4871-bbba-cd8801ccda02][mach port]])
+- it then calls *IOConnectCallMethod* (external methods) - each method is an index into the driver's *externalMethod* dispatch table, passing scalars + struct input/output
+
+* why it's a goldmine
+- hundreds of drivers, each exposing external methods that take attacker-controlled input, running *in the kernel* (or a DriverKit dext)
+- classic bug classes: missing bounds checks on the selector/scalarCount, type confusion in the struct input, integer overflow sizing an IOMalloc, UAF on the client object, OOB in a shared IOMemoryDescriptor / clientMemoryForType mapping
+- a huge fraction of macOS/iOS LPE and jailbreak chains are IOKit userclient bugs (AppleAVE, IOSurface, AppleGraphics, etc)
+
+* enumeration / recon
+- *ioreg -l* dump the registry (add -w0 -f, -c IOUserClient). *ioreg -brc IOUserClient*
+- find which methods a driver exposes = reverse its kext (getTargetAndMethodForIndex / externalMethod override) - see [[id:aa239ad7-0896-47fa-a012-9065ad47a80d][RE tooling]]
+- *IOKitTools*, and Levin's *joker* for kernelcache/kext analysis
+- fuzzing: enumerate services, brute IOConnectCallMethod selectors + sizes, watch for [[id:fef29f8b-9378-4407-b2b7-c19d2b5868ca][panics]]
+
+* modern mitigations narrowing it
+- many drivers moved to userspace *DriverKit* dexts (see [[id:e136fffc-9d87-4d4d-b639-7346e75ab9e3][SystemExtensions]]) - a bug there is a sandboxed userspace crash not ring-0
+- [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]] + entitlements restrict which clients even non-root can open
+- kernel heap hardening (kalloc_type, zone_require) + PAC/PPL make the bugs harder to exploit (see [[id:d5b866ac-68be-43d7-a1fa-7e4d20b966a0][ModernAntiExploitation]])

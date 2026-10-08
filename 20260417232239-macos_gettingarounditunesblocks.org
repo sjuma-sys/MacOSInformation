@@ -1,0 +1,13 @@
+:PROPERTIES:
+:ID:       95b1eea0-7225-428b-a261-6795c0fbbde1
+:END:
+#+title: MacOS GettingAroundItunesBlocks
+
+If you are reversing itunes youll find that if you run gdb it fails and if you use dtrace it will kill itself.
+
+You can get around this using GDB by setting a breakpoint at ptrace (long before program is called)
+
+after that run detach and use GDB and follow the program by attaching again using gdb -p [pid] inside gdb
+
+you can also use dtrace as the checks in place now fail due to how it is setup
+

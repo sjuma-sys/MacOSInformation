@@ -1,0 +1,9 @@
+:PROPERTIES:
+:ID:       2deeccc8-b65c-4800-9f9b-ba0eaba32580
+:END:
+#+title: MacOS persistence
+
+Mac OS malware can persist in
+- /etc/cron
+- /Library/LaunchAgents
+- /System/Library/{Launchdaemons|LaunchAgents}

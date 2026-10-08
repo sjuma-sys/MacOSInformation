@@ -1,0 +1,31 @@
+:PROPERTIES:
+:ID:       c6a13d38-f075-4bb1-a966-122b66400beb
+:END:
+#+title: Networking
+
+The modern network stack - firewalls, filtering, discovery. Replaces the ipfw/[[id:8cf123bd-2672-48aa-bd83-ea9472126a00][Bonjour]] material from the book. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* firewalls (there are two, different layers)
+- *pf* (packet filter, from OpenBSD) - the real kernel firewall, replaced ipfw. config /etc/pf.conf, control *pfctl* (*sudo pfctl -sr* show rules, *-e/-d* enable/disable). packet-level, not app-aware
+- *Application Firewall* (ALF, socketfilterfw / com.apple.alf) - the GUI "Firewall" in Settings. per-*application* inbound control, keyed by code signature. *socketfilterfw --getglobalstate / --add / --blockapp*. this is the "allow incoming connections?" prompt
+- the book's point still holds: the app firewall only governs *incoming*; outbound is open unless you add a filter
+
+* Network Extensions (the modern, kext-free way to touch traffic)
+- replaced network kexts (see [[id:e136fffc-9d87-4d4d-b639-7346e75ab9e3][SystemExtensions]]). flavours:
+  - *Content Filter* (NEFilterDataProvider) - inspect/allow/deny flows (how LuLu/Little Snitch and DLP tools work now)
+  - *DNS Proxy* / *DNS Settings* - reroute/inspect DNS
+  - *Packet Tunnel / App Proxy* (NEPacketTunnelProvider) - VPNs
+  - *Transparent Proxy*
+- all run as entitled, user-approved userspace extensions
+
+* discovery & continuity
+- *mDNS/Bonjour* now served by *mDNSResponder* (the old [[id:8cf123bd-2672-48aa-bd83-ea9472126a00][Bonjour]] note) - still an [[id:25ffdd60-6d63-4429-b617-9a7895238146][attack surface]] on the LAN, plus *AWDL* (Apple Wireless Direct Link, awdl0) powering AirDrop/AirPlay/Handoff - its own juicy remote surface (see Project Zero's AWDL work)
+
+* inspection / tooling
+- *lsof -i -P* , *netstat -an* (deprecated-ish), *nettop* (live per-process), *sudo dtrace*/*nettop*
+- *networksetup* (configure interfaces/DNS/proxies), *scutil --dns* (resolver config), *scutil --proxy*
+- packet capture: *tcpdump*, and *Network Extension*-based captures; *sudo tcpdump -i pktap,all* to see per-process; *networkQuality* for speed
+- unified log network subsystem, and *symptomsd* / *nehelper* for the NE plumbing
+
+* trust
+- *ATS* (App Transport Security) forces TLS for app networking by default; system trust store via *Security.framework* SecTrust; add/trust certs with *security add-trusted-cert* (into [[id:1d07fae1-efa2-4922-8887-61e4402cf561][keychain]])

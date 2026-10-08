@@ -1,0 +1,27 @@
+:PROPERTIES:
+:ID:       9edc5a4f-7b3e-4398-94f3-828823c3eb31
+:END:
+#+title: MacOS SIP
+
+System Integrity Protection (aka "rootless"), since 10.11 El Capitan. The big one the book never had: *even root cant touch protected stuff*. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* what it protects
+- system dirs: /System, /usr (except /usr/local), /bin, /sbin, and preinstalled apps in /Applications
+- restricts dangerous stuff even as root:
+  - loading unsigned [[id:e136fffc-9d87-4d4d-b639-7346e75ab9e3][kexts / system extensions]]
+  - *task_for_pid()* / debugging apple-signed & platform binaries (kills easy code injection into system procs)
+  - [[id:a00daff0-10a5-4d51-94bc-c1e44348daa2][dtrace]] on protected processes
+  - writing to NVRAM, unauthorized filesystem mounts over system paths
+- protected files carry a *restricted* flag (com.apple.rootless xattr), see them with *ls -lO* (capital O)
+
+* checking / toggling
+- *csrutil status* from a terminal shows enabled/disabled
+- can ONLY be changed from recoveryOS (not from the running system):
+  - reboot to recovery (apple silicon: hold power; intel: cmd-R), Terminal -> *csrutil disable* / *csrutil enable*
+- flags live in NVRAM. partial disables exist (*csrutil enable --without dtrace* etc) but apple deprecated most of them
+- on [[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]] disabling SIP also requires dropping to Reduced Security via LocalPolicy
+
+* why it matters for attackers
+- persistence in /System/Library/LaunchDaemons (from the old [[id:2deeccc8-b65c-4800-9f9b-ba0eaba32580][persistence]] note) no longer works, those paths are read-only+sealed
+- SIP bypass = its own bug class (historically: com.apple.rootless xattr tricks, installer/package bugs, symlink races). a full chain usually wants SIP bypass to get anywhere persistent
+- related but separate: the system volume itself is sealed & verified, see SSV in [[id:25d3f47d-2eac-4cef-abad-140722ea44be][MacOS APFS]]

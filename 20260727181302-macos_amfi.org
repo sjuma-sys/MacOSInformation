@@ -1,0 +1,25 @@
+:PROPERTIES:
+:ID:       d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39
+:END:
+#+title: AMFI
+
+AppleMobileFileIntegrity - the enforcer that decides whether code is allowed to run and which entitlements it really has. The gatekeeper of [[id:2e1db5fd-d76e-47f6-9124-4b61d30d1667][code signing]]. Two halves: a kernel [[id:5acf211b-a96d-4fdc-be24-1fd639158e2a][MACF]] policy + a userland daemon. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the two halves
+- *AMFI.kext* - registers MACF hooks on exec/mmap/etc. enforces:
+  - all executable pages must be backed by a valid code signature (cs_enforcement) - no unsigned code exec
+  - *library validation* - a process only loads dylibs signed by the same team id or Apple (kills [[id:cfdfddc9-2fac-421d-a105-9983b780b9f6][dylib injection/hijack]]) unless it has the disable-library-validation entitlement
+  - which entitlements a binary is allowed to claim
+- *amfid* (userland daemon) - the kext calls up to amfid to evaluate the CMS signature / provisioning when it can't decide in-kernel. historically a juicy target: if you can MITM the kext<->amfid reply (or patch amfid), you forge "signature valid" -> run unsigned code. classic jailbreak move
+
+* entitlements & provisioning
+- entitlements are only honored if the signature is authorized to carry them (Apple-signed, or a *provisioning profile* grants them for dev/enterprise). you can't self-sign com.apple.private.* onto your binary and have AMFI believe it
+- *provisioning profiles* (/var/db/provisioning-profiles, or embedded) map a signing identity + device set + entitlements, countersigned by Apple
+
+* boot-args / toggles (need SIP off)
+- *amfi_get_out_of_my_way=1* (nvram boot-arg) disables AMFI entirely - for kernel dev / running unsigned. requires [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]] off + Permissive on [[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]]
+- *AMFIPassBeta*, cs_enforcement_disable (legacy)
+
+* relevance
+- "get my unsigned/modified code to run" = beat AMFI: a signing bug, an entitled victim (disable-library-validation / allow-unsigned-memory), an amfid bypass, or a kernel r/w to flip the process's cs_flags / mark it platform binary
+- on a defended box, AMFI + [[id:2e1db5fd-d76e-47f6-9124-4b61d30d1667][trust caches]] are why arbitrary native payloads are hard - a lot of macOS malware is therefore script/interpreter based (osascript, python, JXA) to sidestep it

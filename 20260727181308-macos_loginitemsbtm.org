@@ -1,0 +1,25 @@
+:PROPERTIES:
+:ID:       0361e3e2-1087-49a3-b7e6-a3c840d614af
+:END:
+#+title: Login Items & BTM
+
+Since Ventura (13) macOS tracks every autostart mechanism through *BackgroundTaskManagement* (BTM) and surfaces it in System Settings > General > Login Items. Big deal for both [[id:38799f74-42b0-45b9-afcb-6191109245b1][persistence]] and [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][DFIR]]. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* what BTM does
+- *backgroundtaskmanagementd* records the creation of [[id:fed28c72-5b99-4484-a2f0-7aa7ee7fdb6b][launchd]] agents/daemons and login items, and *notifies the user* ("Item Added — ... will run in the background")
+- user can toggle each item on/off in Login Items UI. so dropping a LaunchAgent is no longer silent - it pops a notification and is listed
+- feeds an [[id:be6bd260-d8f9-4c95-aeb7-a3dad6786f13][EndpointSecurity]] event (ES_EVENT_TYPE_NOTIFY_BTM_LAUNCH_ITEM_ADD) so EDRs see new persistence in real time
+
+* the modern API
+- *SMAppService* (ServiceManagement) replaced SMJobBless/SMLoginItemSetEnabled:
+  - *SMAppService.mainApp* (login item), *.agent(plistName:)*, *.daemon(plistName:)*, *.loginItem(identifier:)*
+  - the plists ship *inside the app bundle* (Contents/Library/LaunchDaemons etc) and are registered via the API, not dropped loose in /Library
+- *sfltool*, *sfltool dumpbtm* - dump the BTM database (analyst tool)
+
+* the BTM database (forensics gold)
+- stored at */private/var/db/com.apple.backgroundtaskmanagement/BackgroundItems-v*.btm* (a serialized/NSKeyedArchiver blob, SIP-protected)
+- records: item name, developer/team id, type (agent/daemon/login item), associated bundle, enabled/disabled, timestamps
+- parse with *sfltool dumpbtm* or community parsers - gives a history of what tried to persist and when. a prime [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][DFIR]] artifact
+
+* attacker relevance
+- persistence now has a paper trail + user prompt. evasion research targets: getting BTM to not record (bugs), abusing already-approved items, or living in mechanisms BTM historically didn't cover (config profiles, some plugin types)

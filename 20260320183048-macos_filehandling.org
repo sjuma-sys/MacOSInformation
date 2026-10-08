@@ -1,0 +1,27 @@
+:PROPERTIES:
+:ID:       2f8f793a-665e-4743-a354-06de05ffd447
+:END:
+#+title: MacOS file handling
+
+* Storage of the different file handlers
+
+/System/Library/Framworks/Coreservices.Framework/Versions/A/Frameworks/LaunchServices.framwork/Versions/A/Support/lsregister// -dump
+
+This rerigter determines what handles a file when it is double clicked, this information is also resident in the plist but would take w while to find out about it in a plist. The nominator for deciding what handles what file is the *CFBundlesExtension* within the plist, this is closely followed by the file type handled.
+
+An easy way to find it from a plist would be to cd to the applications content folder then
+*+grep -A3 CFBundleExtensions Info.plist | grep string+*
+
+* Safe file types
+This is a list of files that can automatically opened without the need for a prompt like do u trust this person etc
+You can find this list at */System/Library/CoreServices/CoreTypes.bundle/Contents/Resources/System*
+From here you can choose an attack vector...
+The different categories are:
+- LRiskCategorySafe: Auto opens after download
+- LRiskCategoryNeutral: No warning but not auto opened
+- LRiskCategoryUnsafeExecutable: Triggers warning that the file is an application
+- LRiskMayContainUnsafeExecutable: This is for archives that contain an executable and triggers warnings
+
+  *These settings can be overriden by the contents of the /Library/Preferences/com.apple.DownloadAssessment.plist and ~/Library/Preferences/com.apple.DownloadAsessment.plist*
+
+

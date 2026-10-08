@@ -1,0 +1,32 @@
+:PROPERTIES:
+:ID:       5c5adb87-ccbc-4a27-994d-94ac38a9c2c6
+:END:
+#+title: Preferences System
+
+How macOS apps store settings - the *defaults* / CFPreferences system built on [[id:64919166-82d3-42e0-978a-581ed9678dbb][plists]]. Everywhere in config, RE and [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][DFIR]]. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the model
+- preferences are key/value stored per *domain* (usually the app's bundle id, e.g. com.apple.finder) as a plist
+- managed by *cfprefsd* (a per-user + system daemon) - you should go THROUGH it, not edit files directly, because it caches aggressively (editing the file behind its back gets overwritten / ignored)
+- domains resolve across a search list: app domain + *NSGlobalDomain* (aka .GlobalPreferences, system-wide defaults) + host/user scoping (ByHost for per-machine)
+
+* file locations
+- per-user: *~/Library/Preferences/<bundleid>.plist* (+ ByHost/ for machine-specific)
+- system: */Library/Preferences/*
+- sandboxed apps: inside their container *~/Library/Containers/<id>/Data/Library/Preferences/* ([[id:023664b9-7735-435a-acec-b887156aeafb][sandbox]])
+- managed (MDM/profile) prefs override user ones - configuration profiles write here
+
+* the defaults tool
+- *defaults read <domain>* / *defaults read <domain> <key>* / *defaults read-type*
+- *defaults write com.apple.finder AppleShowAllFiles -bool true*
+- *defaults write <domain> <key> -int/-string/-bool/-array/-dict ...*
+- *defaults delete <domain> [key]*, *defaults domains*, *defaults find <word>*
+- *defaults read NSGlobalDomain* for the global scope
+- after writing app prefs you often must *killall cfprefsd* or restart the app to see it (cache)
+
+* plist formats & tooling
+- plists come as XML, *binary* (bplist00 - most on-disk prefs), or json. convert/inspect with [[id:64919166-82d3-42e0-978a-581ed9678dbb][plutil]] (*plutil -p file*, *plutil -convert xml1/binary1*), *PlistBuddy* (*/usr/libexec/PlistBuddy -c "Print" file*), or *defaults*
+- binary plists show up embedded in xattrs, keychains, BTM, NSKeyedArchiver blobs - recognizing bplist00 magic is a useful RE/DFIR reflex
+
+* relevance
+- malware config, C2 URLs, and persistence toggles frequently hide in prefs domains; DFIR reads them for app state + MRU lists. NSGlobalDomain + ByHost are easy to overlook

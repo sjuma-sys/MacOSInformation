@@ -1,0 +1,10 @@
+:PROPERTIES:
+:ID:       574ad9c9-95df-4999-ae46-4bb0eb957845
+:END:
+#+title: MacOS Parlance
+
+MacOS uses a tool named [[id:8cf123bd-2672-48aa-bd83-ea9472126a00][MacOS Bonjour]] for discovery of computers on networks.
+
+[[id:c1160fca-99d3-4e52-b1ee-ba1d4c398df9][MacOS Quicktime]]
+
+  

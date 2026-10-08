@@ -1,0 +1,32 @@
+:PROPERTIES:
+:ID:       18ebcc74-3a1d-4150-bc52-d803897797a1
+:END:
+#+title: Sandbox Internals
+
+Under the hood of the [[id:023664b9-7735-435a-acec-b887156aeafb][App Sandbox]] / old seatbelt - the profile language, the kernel side, and how escapes work. Built on [[id:5acf211b-a96d-4fdc-be24-1fd639158e2a][MACF]]. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the pieces
+- *Sandbox.kext* (the "Seatbelt" MACF policy) - evaluates a compiled profile at each hooked operation
+- *libsandbox.dylib* + *sandboxd* - userland: compiles profiles, handles some upcalls/logging
+- *sandbox_init* / *sandbox_init_with_parameters* - enter a profile (deprecated but functional)
+
+* SBPL (Sandbox Profile Language)
+- a TinyScheme/Scheme-like DSL. structure:
+  - *(version 1)*
+  - *(deny default)* or *(allow default)* - the baseline stance
+  - rules: *(allow file-read* (subpath "/usr/lib"))*, *(deny network* )*, *(allow mach-lookup (global-name "com.apple.foo"))*
+- operations are hierarchical: *file*, *file-read**, *file-write**, *network**, *mach-lookup*, *mach-register*, *ipc-posix-shm*, *iokit-open*, *process-exec*, *sysctl-read*, *system-socket*... hundreds of them
+- *filters*: (subpath), (literal), (regex), (global-name) for mach, (local-name), (require-entitlement), (with telemetry)
+- apple ships profiles *compiled* to bytecode; you rarely see the source. platform profiles referenced by name live conceptually in the kernel/containermanagerd
+
+* container & entitlement glue
+- for App Sandbox, the profile is a base template widened by *entitlements* (com.apple.security.*) and by the app's *container* (~/Library/Containers/<id>). [[id:4549c774-a44c-4af1-9087-c9035a228603][TCC]] handles the user-facing consent on top
+- *sandbox extensions* - a token that temporarily grants access to a specific resource (e.g. Powerbox hands a sandboxed app a token for the exact file the user picked). issued by an entitled broker, consumed with sandbox_extension_consume
+
+* observing / RE
+- decompile a compiled profile with community tools (*sandblaster*, Levin's tooling) - reverses bytecode -> SBPL
+- watch denials: *log stream --predicate 'sender=="Sandbox"'* , or *sandbox-exec* violation logs
+- *sandbox_check(pid, op, type, ...)* to test if an op would be allowed
+
+* escapes
+- an escape = reach a resource/op the profile forgot to deny, or pivot through a *more-privileged broker* the profile DOES let you talk to (a mach-lookup the sandbox allows -> a bug in that daemon / [[id:5ac1af8c-d487-48c7-b09b-6a2b33ac88bf][privileged helper]] / [[id:9e71c276-f849-4407-ba28-128e2e9fec1d][IOKit userclient]]). the allowed mach-lookup list of a sandboxed target is your escape map

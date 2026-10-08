@@ -1,0 +1,36 @@
+:PROPERTIES:
+:ID:       9889f872-5f75-4927-a437-6278d9754569
+:END:
+#+title: Performance & Tracing Tools
+
+The built-in observability toolbox - the modern superset of [[id:c97f8ead-0b34-4fe9-8304-89a179444c40][ktrace]]/[[id:a00daff0-10a5-4d51-94bc-c1e44348daa2][dtrace]] from the book. What to reach for to see what a process is doing without source. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* syscall / file / io tracing
+- *sudo fs_usage -w -f filesys <pid>* - live file + syscall activity (opens, reads, ioctls) with paths. add *-f network*, *-f exec*
+- *sudo dtruss -f -p <pid>* / *sudo dtruss cmd* - strace-like ([[id:d772b6f6-7cc9-4145-b23c-17453afc8073][syscalls]]), a dtrace script
+- *sudo opensnoop / execsnoop / iosnoop* - the DTrace-book one-liners, preinstalled
+- *sc_usage <pid>* - live syscall + page-fault counters
+- NOTE: all dtrace-based tools need [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]] relaxed (dtrace restrictions) to touch protected/Apple processes
+
+* sampling / stacks (why is it slow / hung / what's it doing)
+- *sample <pid> <secs>* - periodic user-stack sampler -> a call-tree profile (no root needed for your procs)
+- *spindump* - system-wide sampler, great for hangs/beachballs (what the WindowServer/whole system was doing)
+- *sudo /usr/bin/spindump <pid>*, *sudo fs_usage*, *latency*, *powermetrics* (energy/CPU/GPU per process)
+- *sudo dtrace -n 'profile-997 /pid==N/ { @[ustack()]=count(); }'* for custom flamegraph data
+
+* memory
+- *vmmap <pid>* - address space regions (see [[id:cb954714-22bb-4698-a6e9-d3b92b83c35a][Mach VM]])
+- *heap <pid>* - dump the malloc heap (objects by class/size), *leaks <pid>* - find leaked allocations, *malloc_history <pid> <addr>* - who allocated this (needs *MallocStackLogging=1* env)
+- *footprint*, *zprint* (kernel zones)
+
+* process / port introspection
+- *ps -Ao pid,ppid,user,comm*, *lsof -p <pid>* (fds), *lsof -i* (sockets)
+- *launchctl print* for services ([[id:fed28c72-5b99-4484-a2f0-7aa7ee7fdb6b][launchd]]); *ioreg* for drivers
+- Levin's *procexp* - excellent all-in-one (threads, ports, regions, fds)
+
+* Instruments / signposts
+- *Instruments.app* (Xcode) - GUI over dtrace/os_signpost: Time Profiler, Allocations, Leaks, System Trace, File Activity. *xctrace record --template 'Time Profiler' --launch -- ./bin* to drive it from CLI
+- os_signpost intervals show up here + in [[id:c37cdbd3-c8af-4240-9e51-2d62e2345299][unified logging]] --signpost
+
+* crashes
+- *.ips* JSON crash reports in ~/Library/Logs/DiagnosticReports (see [[id:b2052093-8a67-4b33-89cb-3135c0b78b65][CrashReporter]]); symbolicate with the LC_UUID -> .dSYM ([[id:c66ac780-d083-48d4-a277-e8ea053e3ffe][Mach-O]]), *atos -o binary -l loadaddr <addr>*

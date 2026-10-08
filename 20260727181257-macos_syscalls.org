@@ -1,0 +1,24 @@
+:PROPERTIES:
+:ID:       d772b6f6-7cc9-4145-b23c-17453afc8073
+:END:
+#+title: MacOS Syscalls
+
+[[id:b2f35b57-edf6-434a-92aa-4e53fd930449][XNU]] has *three* syscall classes because it's [[id:cfe3bb0e-c360-456a-ac8a-c3e995f2e3cd][Mach]] + [[id:457fe001-8599-4d84-9b66-123223ffd1df][BSD]] stitched together. Knowing which is which matters for tracing ([[id:a00daff0-10a5-4d51-94bc-c1e44348daa2][dtrace]]/dtruss) and RE. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the three classes (by the syscall number's sign/class)
+- *BSD/unix syscalls* (positive numbers) - the posix stuff: open/read/write/fork/execve/mmap/ioctl... table in bsd/kern/syscalls.master. on x86 invoked via *syscall* with class bit; arm64 via *svc #0x80*
+- *Mach traps* (negative numbers) - the low-level mach primitives: *mach_msg_trap* (the big one, all [[id:88d472c2-752d-4871-bbba-cd8801ccda02][IPC]] rides it), task_self_trap, thread_switch, _kernelrpc_* (port ops). table in osfmk/kern/syscall_sw.c
+- *machine-dependent traps* - platform specific (e.g. thread_fast_set_cthread_self, arm-specific)
+
+* important non-posix syscalls to know
+- *__mac_syscall* - the [[id:5acf211b-a96d-4fdc-be24-1fd639158e2a][MACF]] multiplexer; sandbox_* and lots of security ops funnel here
+- *csops / csops_audittoken* - query code signing status/flags of a pid (used everywhere to validate callers, e.g. [[id:592f3484-b2e9-4d15-bd0e-811583a18688][XPC]])
+- *proc_info / proc_pidinfo* - the backend for ps/lsof-style introspection
+- *sysctl* / *sysctlbyname* - read+write kernel tunables and query state: *sysctl kern.osversion*, *sysctl hw.optional.arm64*, *sysctl kern.bootargs*, *sysctl machdep.cpu*. also how you detect being traced (kinfo_proc P_TRACED), enumerate procs, etc
+- *ptrace* - crippled on macOS (PT_DENY_ATTACH anti-debug, and mostly you use mach task ports instead, see [[id:2bfa84c8-98dd-4601-8f75-67be82fa9b83][Tracing & debugging]])
+
+* tracing what a process calls
+- *sudo dtruss -f -p <pid>* (a dtrace script, needs [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]] relaxed for protected targets) - truss/strace equivalent
+- *sc_usage <pid>* live syscall counts, *latency*
+- raw dtrace: *syscall::open:entry { printf("%s", copyinstr(arg0)); }*
+- see [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][Performance & Tracing Tools]]

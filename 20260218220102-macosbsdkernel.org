@@ -1,0 +1,20 @@
+:PROPERTIES:
+:ID:       457fe001-8599-4d84-9b66-123223ffd1df
+:END:
+#+title: MacOSBSDKernel
+
+
+* Overview
+MacOS uses the BSD kernel to fill in the gaps for what [[id:cfe3bb0e-c360-456a-ac8a-c3e995f2e3cd][MacOSMachKernel]] cannot do.
+
+** Handles
+- Processes
+- Signals
+- Basic security, such as users and groups
+- System call infrastructure
+- TCP/IP stack and sockets
+- Firewall and packet filtering
+
+** Security
+- Security is based on Processes in BSD as opposed to being based on port rights like in the Mach kernel
+

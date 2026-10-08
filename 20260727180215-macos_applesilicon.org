@@ -1,0 +1,32 @@
+:PROPERTIES:
+:ID:       dfdea695-feeb-4714-a411-76ef5cd74d62
+:END:
+#+title: Apple Silicon
+
+Since M1 (2020) macs are arm64 (aarch64), specifically the *arm64e* ABI which uses pointer auth. The whole PPC/i386 discussion in [[id:294092df-f9da-4159-8ce4-936c31037752][MacOS Basic Architecture]] is obsolete. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* binaries
+- universal binaries are now *universal2* = arm64 + x86_64 (not ppc/i386)
+- check with *file ./binary* and *lipo -archs ./binary*
+- extract one slice with *lipo -thin arm64 in -output out*
+- intel binaries run under *rosetta2* which AOT/JIT translates x86_64 -> arm64, cached in /var/db/oah
+- arm64 binaries *must* be signed (at least ad-hoc) or the kernel kills them, see [[id:dd71c41f-c6cb-436e-a146-e45b51ffbce3][MacOS CodeSigning]]
+
+* PAC (pointer authentication)
+- arm64e signs pointers (return addrs, function ptrs) with a cryptographic MAC in the top bits using a per-boot key
+- makes ROP/JOP much harder, a corrupted pointer fails auth and faults
+- instructions paci*/auti*, xpac to strip. this is the single biggest exploit-mitigation change
+- more in [[id:d5b866ac-68be-43d7-a1fa-7e4d20b966a0][MacOS ModernAntiExploitation]]
+
+* boot & security levels
+- no more EFI/no T2 chip. apple silicon boots like an iphone: BootROM -> iBoot -> kernelcache
+- security is per-OS-install via *LocalPolicy* set in recoveryOS (hold power to boot into it)
+  - *Full Security* - default, only signed sealed OS
+  - *Reduced Security* - needed to load 3rd party kexts, disable SIP, run other kernels
+  - *Permissive* - for custom kernels
+- change with *csrutil* / *bputil* from recoveryOS
+- secure enclave (SEP) is built into the SoC now, see [[id:25d3f47d-2eac-4cef-abad-140722ea44be][MacOS APFS]]
+
+* W^X / JIT
+- writable+executable memory is forbidden. JITs must use MAP_JIT pages and flip perms per-thread with *pthread_jit_write_protect_np()*
+- needs the com.apple.security.cs.allow-jit entitlement under hardened runtime

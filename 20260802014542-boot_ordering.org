@@ -1,0 +1,44 @@
+:PROPERTIES:
+:ID:       41fb4a2e-cb34-4e40-819a-69bf311d44bf
+:END:
+#+title: Boot Ordering Races in Self-Hosted Services
+#+filetags: :security:selfhosting:
+
+The failure mode that causes "it works until the machine reboots". Part of
+[[id:6781236f-8a25-4e1a-88c4-8c22af0c2aa9][Self-Hosted Service Hardening]].
+
+* The incident
+A GPU service unit fired *12 seconds* into boot, before
+=nvidia-cdi-refresh.service= had regenerated =/etc/cdi/nvidia.yaml=. The
+device reference =--device nvidia.com/gpu=all= could not resolve, container
+creation failed, and it was left stranded in =Created=. Nothing retried.
+Nothing alerted. The site was down ~13 hours.
+
+* Why =After== is not enough
+Ordering directives only work for units systemd knows about. Hardware
+readiness, a vendor refresh service, a CDI spec regeneration or a
+secondary mount may not be expressible as a dependency you can name.
+
+* Fix 1 — declare what you can
+#+begin_src conf
+RequiresMountsFor=/path/to/code
+After=network-online.target
+#+end_src
+
+* Fix 2 — poll for readiness in the start script
+Cheap, explicit, and robust against things systemd cannot model:
+#+begin_src bash
+for i in $(seq 1 60); do
+  [ -s /etc/cdi/nvidia.yaml ] && nvidia-smi -L >/dev/null 2>&1 && break
+  sleep 5
+done
+nvidia-smi -L >/dev/null 2>&1 || { echo "GPU not ready"; exit 1; }
+#+end_src
+
+* Fix 3 — retry transient failures
+Hook failures right after boot are transient. Retry the run a few times
+with a delay before giving up.
+
+* Fix 4 — assume it will still happen
+Ordering fixes reduce probability, never to zero. Pair them with
+[[id:7036679c-7a53-4da5-91b0-074374bded58][Uptime Watchdog Design]] so the next one is measured in minutes, not hours.

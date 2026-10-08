@@ -1,0 +1,27 @@
+:PROPERTIES:
+:ID:       68dac921-fa1e-4d7d-9f48-7f5d957dc66d
+:END:
+#+title: MacOS ModernSecurity
+
+The [[id:0e1a35b2-48f6-48b9-9627-852256d40990][MacOS]] notes come from the Mac Hackers Handbook which is Leopard (10.5, 2009) era. Almost everything defensive in it is now wrong or has been superceeded. This note is the bridge to how things actually work on a modern mac (Apple Silicon, macOS 12-15+). For the under-the-hood internals (kernel, dyld, mach-o, tooling) see [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* whats changed since the book
+- *PPC/i386 is dead* -> now arm64/[[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]], universal2 binaries are arm64 + x86_64, rosetta2 translates intel
+- *no ASLR was a lie now* -> full userland ASLR + KASLR, see [[id:d5b866ac-68be-43d7-a1fa-7e4d20b966a0][MacOS ModernAntiExploitation]]
+- *ipfw firewall* -> replaced by pf, plus the socketfilter/appfirewall (com.apple.alf)
+- *seatbelt* -> now the [[id:592f3484-b2e9-4d15-bd0e-811583a18688][MacOS AppSandbox]], profiles still compiled from .sb but far more locked down
+- *kexts* -> deprecated, userspace [[id:e136fffc-9d87-4d4d-b639-7346e75ab9e3][MacOS SystemExtensions]] / DriverKit now
+- root is no longer god -> [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][MacOS SIP]] protects the system even from root
+
+* the new pillars (didnt exist in the book)
+- [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][MacOS SIP]] - system integrity protection / rootless
+- [[id:6ee75269-c2a4-4aa4-8a07-7d1e404c4b5a][MacOS Gatekeeper]] - quarantine + notarization gate on downloaded code
+- [[id:dd71c41f-c6cb-436e-a146-e45b51ffbce3][MacOS CodeSigning]] - codesign, entitlements, hardened runtime, AMFI
+- [[id:4549c774-a44c-4af1-9087-c9035a228603][MacOS TCC]] - privacy consent framework, the thing throwing all the popups
+- [[id:023664b9-7735-435a-acec-b887156aeafb][MacOS XPC]] - the IPC everything talks over now, big vuln class
+- [[id:be6bd260-d8f9-4c95-aeb7-a3dad6786f13][MacOS EndpointSecurity]] - the API every EDR/AV is built on
+- [[id:433504f9-7c04-4551-8eff-6180407b80ad][MacOS dyldSharedCache]] - system libs no longer exist as files on disk
+- [[id:25d3f47d-2eac-4cef-abad-140722ea44be][MacOS APFS]] - filesystem, SSV sealed system volume, secure enclave
+
+* the mental model now
+old world: get root = win. new world: root is cheap, the real boundaries are SIP, the sandbox, TCC and code signing/AMFI. modern macOS exploitation is about chaining bypasses of *those* layers, not just popping a shell. the attack surface note [[id:25ffdd60-6d63-4429-b617-9a7895238146][MacOS AttackSurface]] is still directionally right (find the weakest handler) but the services and mitigations are all different.

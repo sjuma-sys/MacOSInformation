@@ -1,0 +1,118 @@
+:PROPERTIES:
+:ID:       2e3218fb-8d2c-4e7f-baf0-5382a5ab85ea
+:END:
+#+title: FIleFuzzingExamples
+
+THIs is similar to [[id:b084111e-114b-4333-94b4-103d5b56f1c2][NetworkFuzzing]] though it is much easier to work with and once again it takes the example from quicktime player once again. You can use the script below to change bytes in the file to see how quicktime player will react to the bytes being changes. THe bytes being changed is what makes it malformed
+
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+
+#define NUM_FILES 8092
+
+int main(void)
+
+{
+FILE *in, *out, *lout;
+unsigned int n, i, j;
+char buf[1002444];
+char backup[1002444];
+char outfile[1024];
+int rn;
+int rbyte;
+int numwrites;
+
+in = fopen("good.jp2", "r");
+n = read(fileno(in), buf, sizeof(buf));
+memcpy (backup, buf, n);
+
+lout=fopen("list", "w");
+
+srand(time(NULL) );
+for (i=0;i<NUM_FILES; i++)
+// seek and write
+numwrites=rand() % 16;
+
+numwrites++;
+
+printf("{+] Writing %d bytes\n", numwrites) ;
+for (j=0;j<numwrites; j++)
+{
+
+rbyte = rand() % 257;
+
+if (rbyte == 256)
+
+rbyte = -1;
+rm = rand() @®n - 1;
+printf("[+] buf[%d] = d\n", rn, rbyte);
+buf[rn] = rbyte;
+
+}
+
+sprintf(outfile, "bad-%d.jp2", i);
+out = fopen(outfile, "w");
+write(fileno(out), buf, n);
+
+fclose (out) ;
+
+fprintf(lout, "%s\n", outfile);
+memcpy (buf, backup, n);
+
+}
+
+THe scrip tabove generated the malformed filees and then we use the bash scripot below in order to run the quick time player againsty the malfomed files and check for anything generate in the [[id:b2052093-8a67-4b33-89cb-3135c0b78b65][MacOS CrashReporter]].
+
+
+#!/bin/bash
+X=0;
+“rm -f ~/Library/Logs/CrashReporter/QuickTime*-\
+for i in ‘cat list’;
+do
+echo $i;
+/Applications/QuickTime\
+Player.app/Contents/MacOS/QuickTime\ Player $i &
+sleep 5;
+X=ls ~/Library/Logs/CrashReporter/QuickTime* | wc | awk
+
+‘{print $1}'°;
+if [ 0 -1t $x ]
+then
+echo "Crash: $i";
+mv ~/Library/Logs/CrashReporter/QuickTime* /tmp/
+fi
+killall -9 QuickTime\ Player;
+done
+
+YOu can look though the crash files to see what has been failed on and you may get someinformation that should not have been exposed such as the ionformation regarding malloc which provid einsights in to the inner workings of the quicktime player application
+
+
+You can then look at which file triggered the error and then investigatye further with the use of [[id:5163d967-eac3-45f1-bfa2-99213f2edcc3][MacOS GuardMalloc]] and GDB by running the quicktime player as the only arguement to gdb.
+
+Following this you would use set env DYLD_INSRT_LIBRARIES=/usr/lib/libgmallov.dylib and then set args image.jp2 and then hit r on it.
+
+YOu will later see waht the allocated buffer is and then you can start reading from the different buffers using x/i $eip and then x/16x $eax.
+
+YOU can also use the ALLOW reads ffrom guard malloc
+
+A few references:?
+https://www.blackhat.com/presentations/bh-usa-07/Miller/Presentation/bh-usa-07-miller.pdf
+
+http://www.milw0rm.com/exploits/4648
+
+http://www.apple.com/support/downloads/quicktime731forleopard-html
+
+http://archives.neohapsis.com/archives/dailydave/2008-q1/0158-html
+
+http://www.defcon.org/images/defcon-15/dc15-presentations/dc-15-miller.pdf
+
+http://cansecwest.com/csw08/csw08-miller.pdf
+
+http://research.microsoft.com/research/pubs/view-aspx?type=Technical%20Report&id=1300
+
+http://www.vdalabs.com/tools/efs.html
+
+http://www.amazon.com/Fuzzing-Brute-Force-Vulnerability-Discovery/dp/0321446119
+
+http://theartoffuzzing.com/joomla/index.php?option=com_content&task=view&id=21&Itemid=40

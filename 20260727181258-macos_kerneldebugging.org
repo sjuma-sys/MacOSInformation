@@ -1,0 +1,30 @@
+:PROPERTIES:
+:ID:       fef29f8b-9378-4407-b2b7-c19d2b5868ca
+:END:
+#+title: Kernel Debugging & Panics
+
+How to debug [[id:b2f35b57-edf6-434a-92aa-4e53fd930449][XNU]] itself and read panic logs. Essential for [[id:9e71c276-f849-4407-ba28-128e2e9fec1d][IOKit]] fuzzing/exploit dev. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the KDK
+- Apple ships a *Kernel Debug Kit* (KDK) per build from the developer site: a symbolicated *kernel.development* + dSYMs + kexts. match it to your build (*uname -a* / *sysctl kern.osversion*)
+- development/debug kernels have more asserts + are debuggable; install and select with *kmutil configure-boot* / kcditto
+
+* live two-machine kernel debugging (KDP)
+- xnu debugs over the network via *KDP* (kernel debug protocol) - you need a *second mac* as the debugger; you can't self-debug the kernel
+- set on the target (SIP off / permissive): *sudo nvram boot-args="debug=0x100 -v keepsyms=1 kdp_match_name=en0"*
+  - debug flags: DB_HALT/DB_NMI/DB_KERN_DUMP etc (the 0x1xx bits) control halt-on-panic, NMI drop-to-debugger
+- host connects with lldb: *lldb kernel.development ; (lldb) kdp-remote <target-ip>*
+- Apple Silicon: KDP over a special USB (kdp-over-usb) / uses a KDK + a paired mac; different from intel serial/ethernet KDP
+
+* panics
+- a panic writes a log to */Library/Logs/DiagnosticReports/*.panic* (modern *.ips json). *log show --last boot* + the panic file
+- read *panicked task / backtrace / faulting address*; a *kernel_data_abort* / bad address = your bug. *sysctl vm.panic_action* etc
+- *kmutil inspect* / *kmutil showloaded* to correlate slid addresses to kexts; *kmutil analyze-panic <file>*
+- kernel ASLR: use *kslide* from the panic + KDK symbols to symbolicate
+
+* handy boot-args
+- *-v* verbose boot, *keepsyms=1* keep symbols for panic backtraces, *amfi_get_out_of_my_way=1* (needs SIP off, disables [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]]), *serial=3* serial output, *pmuflags*, *cs_enforcement_disable=1* (legacy)
+- most require [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]] disabled + Permissive security on [[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]]
+
+* userland kernel introspection (no 2nd machine)
+- *zprint* kernel zone stats, *sysctl kern.*, *ioreg*, and Levin's tools. lldb kernel macros come with the KDK (kmem, showallkexts, showallvm...)

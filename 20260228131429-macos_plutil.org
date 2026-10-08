@@ -1,0 +1,16 @@
+:PROPERTIES:
+:ID:       64919166-82d3-42e0-978a-581ed9678dbb
+:END:
+#+title: MacOS plutil
+
+* descrription
+Used to be able to convert plists into binaries and vice versa *important* PLISTS must be in XML
+
+* usage
+plutil -convert binary1 -o Binary.Info.plist Info.plist
+- Converts the plist into a binary
+
+plist -convert xm11 -o XML.Binary.Info.plist Binary.Info.plist
+- reverses the binary into a xml plist
+
+  

@@ -1,0 +1,29 @@
+:PROPERTIES:
+:ID:       a260e433-3b04-486d-b7e7-22d1591ba6af
+:END:
+#+title: MACOS I/O kit
+
+* Description
+Open source object oriented driver framework for the XNUKernel.
+
+* Commands
+- kexstat
+  - lists all currently loaded drivers
+  - drivers are usually stored in /System/Library/Extensions
+  - most output is loaded at address 0x0 meaning they are really in the kernel and not in memory space
+
+- kextfind
+  - used to find different kernel extensions with basic string match
+  - syntax is kextfind -bundle-id -substring 'msdos'
+    - (this command will search for msdos amongst the kernel extensions)
+
+- kextload
+  - used to load in kernel extensions on MacOS
+  - syntax is sudo kextload /Path/to/kext.kext
+    - (command will load in any of the kernel extensions it was directed to)
+
+- kextunload
+  - used to unload kernel extensions
+  - syntax is sudo kextunload kextasitappearsfromkextat
+
+

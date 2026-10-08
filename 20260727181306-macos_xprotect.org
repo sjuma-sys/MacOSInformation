@@ -1,0 +1,24 @@
+:PROPERTIES:
+:ID:       08473fee-1f06-4b0f-9d1d-712252c2c547
+:END:
+#+title: XProtect / MRT
+
+Apple's built-in, silent anti-malware stack. The book had no equivalent. Complements [[id:6ee75269-c2a4-4aa4-8a07-7d1e404c4b5a][Gatekeeper]] (which gates first launch) by scanning content + remediating known malware. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the components (they've evolved)
+- *XProtect* (classic) - a *YARA* rule set Apple pushes out-of-band. checked by [[id:6ee75269-c2a4-4aa4-8a07-7d1e404c4b5a][Gatekeeper]]/[[id:2f8f793a-665e-4743-a354-06de05ffd447][LaunchServices]] when quarantined content is opened. rules + version at */Library/Apple/System/Library/CoreServices/XProtect.bundle/Contents/Resources/XProtect.yara*
+- *XProtect Remediator (XPR)* - since 2022, a set of standalone scanner binaries (*XProtectRemediator*Foo*) run *periodically* by launchd that actively hunt + remove known malware families (not just block-on-open). in .../XProtect.app / XProtectRemediator, uses a bigger encrypted rule set
+- *XProtect Behavior Service (XBS)* - newer, monitors for suspicious *behaviors* (e.g. writes to sensitive locations) using a rules db, more heuristic
+- *MRT* (Malware Removal Tool) - the older remediator, largely superseded by XPR
+- *Gatekeeper/syspolicy* + *amfid* + [[id:be6bd260-d8f9-4c95-aeb7-a3dad6786f13][EndpointSecurity]] round out the stack
+
+* how updates arrive
+- delivered silently via the *XProtect* / *config-data* software-update mechanism (separate from OS updates) - so definitions update without a full update. *softwareupdate --list --include-config-data*
+
+* inspecting (defender/analyst)
+- version: *system_profiler SPInstallHistoryDataType | grep -i xprotect* , or read XProtect.bundle Info.plist
+- the YARA rules are readable: dump XProtect.yara to see exactly what apple detects (family names like MACOS.Adload, Pirrit, etc)
+- XPR runs show up in [[id:aa239ad7-0896-47fa-a012-9065ad47a80d][unified log]] / [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][DFIR]]: predicate for XProtectRemediator, and results in the log + Endpoint Security events
+
+* attacker relevance
+- it's signature/behavior based and only covers *known* families - novel or lightly-repacked malware sails past. but assume XProtect YARA + XPR + XBS + notarization revocation all run silently; naming your dropper like a known family or reusing known byte patterns gets you caught for free

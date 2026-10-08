@@ -1,0 +1,14 @@
+:PROPERTIES:
+:ID:       c97f8ead-0b34-4fe9-8304-89a179444c40
+:END:
+#+title: MacOS ktrace
+
+* Description
+Used to track execution flows for processes
+
+* Usage
+- ktrace -tc /commandorprocess/
+  - this produces a dump.out
+
+- kdump
+    - used to read the dump.out file from ktrace

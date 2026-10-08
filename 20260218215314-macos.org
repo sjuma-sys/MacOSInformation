@@ -1,0 +1,36 @@
+:PROPERTIES:
+:ID:       0e1a35b2-48f6-48b9-9627-852256d40990
+:END:
+#+title: MacOS
+
+following along from this lovely [[file:~/Downloads/Books/Mac Hackers Handbook.pdf][book]] on MacOS.
+
+* Chapter 1
+[[id:294092df-f9da-4159-8ce4-936c31037752][MacOS Architecture]]
+
+* Chapter 2
+[[id:574ad9c9-95df-4999-ae46-4bb0eb957845][MacOS Parlance]]
+
+* Chapter 3
+[[id:25ffdd60-6d63-4429-b617-9a7895238146][MacOS AttackSurface]]
+[[id:2f8f793a-665e-4743-a354-06de05ffd447][MacOS filehandling]]
+
+* Chapter 4
+[[id:2bfa84c8-98dd-4601-8f75-67be82fa9b83][MacOS Tracing & debugging]]
+[[id:b40fadf2-11b5-4f76-a754-621fe3d2091a][PyDBG]]
+[[id:e3116b20-0993-4a79-a52f-a46d62f78fcc][PaiMei]]
+[[id:95b1eea0-7225-428b-a261-6795c0fbbde1][MacOS GettingAroundItunesBlocks]]
+
+* Chapter 5
+[[id:af0c1c7d-6480-40fb-b7b2-8f1d73d53a5c][MacOS Finding Bugs]]
+
+* Chapter 6
+[[id:2f40ca3b-875d-4b95-895d-bf6bd17687e5][ReverseEngineering]]
+
+Got to page 153 so 39% :)
+
+* NOTE: book is Leopard-era (2009), most of the defensive stuff is obsolete
+modern macOS (apple silicon, macOS 12-15+) works very differently. see the bridge note:
+[[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]]
+and the deep-dive index for how the OS actually works under the hood:
+[[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]]

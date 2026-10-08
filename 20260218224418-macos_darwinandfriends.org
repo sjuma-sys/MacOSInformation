@@ -1,0 +1,14 @@
+:PROPERTIES:
+:ID:       b11b5b10-c20f-4ddd-88b2-3a5ade027ed2
+:END:
+#+title: MacOS Darwin and Friends 
+
+* Description
+Darwin is the Open source core of [[id:0e1a35b2-48f6-48b9-9627-852256d40990][MacOS]]. The only thing that is not open source is aqua which is the MacOS windowing and GUI.
+
+In addition to aqua Safari and friends are also closed source
+
+
+
+
+

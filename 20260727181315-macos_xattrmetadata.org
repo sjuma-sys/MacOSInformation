@@ -1,0 +1,30 @@
+:PROPERTIES:
+:ID:       aa56c47e-71af-4210-8713-a54d02859fc8
+:END:
+#+title: xattr & Metadata
+
+Extended attributes, Spotlight metadata and FSEvents - the hidden data riding alongside files. Matters for [[id:6ee75269-c2a4-4aa4-8a07-7d1e404c4b5a][Gatekeeper]] and [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][DFIR]]. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* extended attributes (xattr)
+- arbitrary key->value blobs attached to any file, stored in the [[id:25d3f47d-2eac-4cef-abad-140722ea44be][APFS]] inode (or ._AppleDouble on foreign fs). the modern home of what used to be *resource forks*
+- view: *xattr -l file* (list+values), *xattr -p <name> file*; *ls -l@* shows an @ when xattrs present; set *xattr -w name value*; delete *xattr -d name* / *xattr -c* (clear all)
+- important named attrs:
+  - *com.apple.quarantine* - the [[id:6ee75269-c2a4-4aa4-8a07-7d1e404c4b5a][Gatekeeper]] quarantine flag (uuid;timestamp;agent;)
+  - *com.apple.metadata:kMDItemWhereFroms* - download source URL(s) (a plist/bplist blob) - great DFIR
+  - *com.apple.provenance* - ties a binary to its installer/first-launch approval (13+)
+  - *com.apple.macl* - per-file TCC "app that created it may access it" ([[id:4549c774-a44c-4af1-9087-c9035a228603][TCC]])
+  - *com.apple.FinderInfo*, *com.apple.ResourceFork* (legacy fork)
+- gotcha: copying via some tools / non-APFS filesystems / zip strips xattrs - this is exactly how quarantine gets lost (a [[id:6ee75269-c2a4-4aa4-8a07-7d1e404c4b5a][Gatekeeper bypass]] pattern)
+
+* Spotlight metadata
+- *mdimporter* plugins extract per-type attributes into the Spotlight index (.Spotlight-V100). query/read:
+  - *mdfind 'kMDItemDisplayName == "*.pdf"'* , *mdfind -onlyin ~/Downloads foo*
+  - *mdls file* - dump every kMDItem* attribute (incl kMDItemDownloadedDate, kMDItemWhereFroms, content type, timestamps)
+- mdimporters are also a [[id:38799f74-42b0-45b9-afcb-6191109245b1][persistence]]/code-exec surface (they're loaded bundles)
+
+* FSEvents
+- */.fseventsd/* per-volume - a coarse, append-ish log of *which directories changed* over time (not exact files/contents). survives reboots; a key forensic timeline of activity. parse with fseventsparser/mac_apt
+- the live API (FSEventStream / dispatch vnode sources) is how apps watch for changes
+
+* resource forks / AppleDouble
+- legacy fork data now rides as xattrs; on non-mac filesystems it splits into *._filename* (AppleDouble) + *.DS_Store* clutter. recognizing these matters in cross-platform + archive analysis

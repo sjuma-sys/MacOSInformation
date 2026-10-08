@@ -1,0 +1,25 @@
+:PROPERTIES:
+:ID:       9abafa8b-2560-4661-8762-353388054edb
+:END:
+#+title: GCD / libdispatch
+
+Grand Central Dispatch (libdispatch) - the concurrency substrate the whole OS uses instead of raw pthreads. You'll see it constantly in RE and crash logs. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]] (lives in [[id:bae15ec1-7f77-4709-8252-d580a543c3ca][libSystem]]).
+
+* the model
+- you submit *blocks* (^{ }) to *dispatch queues* instead of managing threads yourself. a thread pool (managed by the kernel's workqueue + libdispatch) services the queues
+- *serial queue* - one block at a time, in order (a lightweight lock/actor). *concurrent queue* - many at once
+- *dispatch_async* (fire and forget) / *dispatch_sync* (block until done - deadlocks if you sync onto your own serial queue, a classic bug)
+- *dispatch_get_main_queue()* - the main thread/runloop; UI must happen here
+- *dispatch_after*, *dispatch_once* (thread-safe one-time init - the ubiquitous singleton pattern), *dispatch_group*, *dispatch_semaphore*
+- *dispatch sources* - wrap kernel events (kqueue/[[id:88d472c2-752d-4871-bbba-cd8801ccda02][mach ports]], fds, signals, timers, vnode changes) into block callbacks. lots of daemons are built entirely on dispatch sources
+
+* qos
+- quality-of-service classes (userInteractive, userInitiated, utility, background) set thread priority/throughput; propagates across async + [[id:592f3484-b2e9-4d15-bd0e-811583a18688][XPC]]
+
+* xnu side
+- backed by the *kernel workqueue* (pthread_workqueue) - the kernel decides how many worker threads to hand libdispatch based on load/qos. this is why you see many "com.apple.root.<qos>-qos" threads in [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][samples]]/crash logs
+
+* RE / debugging relevance
+- crash/backtrace frames like *_dispatch_client_callout*, *_dispatch_call_block_and_release*, *dispatch_queue* names help you find where work runs
+- lldb: *thread info*, queue names show up; *(lldb) queue list*
+- a block captures state in a heap struct (isa + invoke fn + captured vars) - recognizable in a disassembly

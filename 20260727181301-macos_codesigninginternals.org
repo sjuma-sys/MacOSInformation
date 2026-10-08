@@ -1,0 +1,30 @@
+:PROPERTIES:
+:ID:       2e1db5fd-d76e-47f6-9124-4b61d30d1667
+:END:
+#+title: CodeSigning Internals
+
+The byte-level structure behind [[id:dd71c41f-c6cb-436e-a146-e45b51ffbce3][MacOS CodeSigning]] - what actually sits in __LINKEDIT and how [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]] validates it. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* where it lives
+- LC_CODE_SIGNATURE load command ([[id:c66ac780-d083-48d4-a277-e8ea053e3ffe][Mach-O]]) points at a blob at the end of __LINKEDIT: the *SuperBlob* (an "embedded signature")
+
+* the SuperBlob contents
+- *CodeDirectory* (CD) - the core. contains:
+  - a *page hash array* - SHA256 of every page of the signed region. the kernel verifies each page's hash as it's faulted in, so tampering a mapped page = kill. this is why you can't just patch a signed binary in memory
+  - the *cdhash* = hash of the CodeDirectory itself = the canonical identity of the binary (what AMFI trust caches, what launchd/TCC key on)
+  - flags (the *cs_flags*: CS_VALID, CS_HARD, CS_KILL, CS_RESTRICT, CS_REQUIRE_LV / library validation, CS_RUNTIME / hardened runtime, CS_ADHOC, CS_PLATFORM_BINARY), team id, exec segment flags
+  - there can be multiple CDs (sha1 + sha256) and an "alternate"
+- *Requirements* - a Designated Requirement (DR) in the *code signing requirements language* (e.g. "anchor apple generic and certificate leaf[subject.OU] = TEAMID"). this is what a verifier evaluates to decide "is this the app I mean" - used by keychain ACLs, [[id:592f3484-b2e9-4d15-bd0e-811583a18688][XPC]] peer checks, etc
+- *Entitlements* blob (the plist) + a DER-encoded entitlements blob
+- *CMS signature* - PKCS#7 over the CD hashes, chaining to an Apple CA (Developer ID / Apple Root). ad-hoc = no CMS, identity is just the cdhash
+
+* trust caches (how apple's own binaries are trusted fast)
+- platform binaries are trusted via *AMFI trust caches* - lists of allowed cdhashes baked into the OS/boot, not per-file CMS checks. being in the trust cache = platform binary = extra powers + SIP protection
+
+* inspecting
+- *codesign -dvvv --extract-certificates* , *codesign -d --requirements :-* , *codesign -d --entitlements :- -*
+- *codesign --display --verbose=4* shows cdhash, CDHash, flags
+- Levin's *jtool2 --sig / jtool2 --ent* dumps the blob nicely; *otool -l | grep -A5 LC_CODE_SIGNATURE*
+
+* attacker relevance
+- signature/CMS parsing bugs, cdhash collisions, DR logic flaws ("was the requirement string too loose?"), and trust-cache injection are all real bug classes. a weak Designated Requirement on a privileged [[id:5ac1af8c-d487-48c7-b09b-6a2b33ac88bf][helper]] or XPC peer check = impersonation

@@ -1,0 +1,30 @@
+:PROPERTIES:
+:ID:       023664b9-7735-435a-acec-b887156aeafb
+:END:
+#+title: MacOS AppSandbox
+
+The grown-up version of seatbelt from [[id:294092df-f9da-4159-8ce4-936c31037752][MacOS Basic Architecture]]. Same underlying kernel machinery (Sandbox.kext / TinyScheme SBPL profiles) but now mandatory for whole classes of software. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* what changed since "seatbelt"
+- app store apps *must* be sandboxed, and every apple daemon is heavily profiled
+- opt in with the *com.apple.security.app-sandbox* entitlement (see [[id:dd71c41f-c6cb-436e-a146-e45b51ffbce3][CodeSigning]]) instead of calling sandbox_init() by hand
+- each sandboxed app gets a container: *~/Library/Containers/<bundle-id>/* - its "home" is redirected there, so it cant see your real ~ unless granted
+- sandbox_init() and *sandbox-exec* are officially deprecated (still work) - the old *sandbox-exec -n nonet /bin/bash* trick still runs but apple discourages it
+
+* profiles
+- still SBPL (scheme-like) .sb files, apple's ship compiled. system profiles live under */System/Library/Sandbox/Profiles/* and */usr/share/sandbox/*
+- entitlements act as switches that widen a base profile:
+  - com.apple.security.network.client / .server
+  - com.apple.security.files.user-selected.read-write  (only what the user picks via powerbox)
+  - com.apple.security.device.camera etc (these also route through [[id:4549c774-a44c-4af1-9087-c9035a228603][TCC]])
+- *Powerbox* (pboxd) is how a sandboxed app gets a file the user explicitly chose without having blanket FS access
+
+* debugging / observing
+- denials log to the unified log + sandboxd. watch them:
+  - *log stream --predicate 'sender == "Sandbox"' --info*
+  - older: *sandbox-exec* violations show as "deny" lines
+- *sandbox_check(pid, "operation", ...)* to test an op
+
+* attacker relevance
+- the modern kill chain is usually: bug in a *sandboxed* target (browser/renderer, quicklook, a preview parser) -> then a *sandbox escape* (often via an [[id:433504f9-7c04-4551-8eff-6180407b80ad][XPC]] service or a mach service the sandbox lets you talk to) -> then LPE/SIP bypass
+- the old book advice "beat the sandbox with a network share" is quaint now; escapes target IPC to more-privileged brokers

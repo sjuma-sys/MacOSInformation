@@ -1,0 +1,38 @@
+:PROPERTIES:
+:ID:       fed28c72-5b99-4484-a2f0-7aa7ee7fdb6b
+:END:
+#+title: launchd
+
+PID 1. The [[id:294092df-f9da-4159-8ce4-936c31037752][architecture note]] introduced it as cron/init replacement; here's the depth. It's the root of the process tree, the [[id:88d472c2-752d-4871-bbba-cd8801ccda02][mach bootstrap]] server, and the [[id:592f3484-b2e9-4d15-bd0e-811583a18688][XPC]] domain manager. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* what it is
+- started by the kernel as pid 1, brings up the entire userland from job plists
+- every service registers/looks up mach names through it (bootstrap) - it IS the service discovery layer
+- manages job lifecycle: on-demand launch (socket/mach/path activation), keepalive, throttling, resource limits
+
+* domains (the modern model - not just Agents vs Daemons)
+- *system* - runs as root, no GUI (LaunchDaemons)
+- *user/<uid>* - a user's non-GUI jobs
+- *gui/<uid>* - a logged-in user's GUI session (LaunchAgents)
+- *pid/<pid>*, *login/<auid>* etc. you address jobs as e.g. *gui/501/com.foo.bar*
+
+* plist locations (also the [[id:38799f74-42b0-45b9-afcb-6191109245b1][persistence]] map)
+- /System/Library/LaunchDaemons, /System/Library/LaunchAgents  (apple, SIP-protected)
+- /Library/LaunchDaemons (root daemons), /Library/LaunchAgents (per-machine agents)
+- ~/Library/LaunchAgents (per-user agents)
+
+* key plist keys
+- *Label* (unique id), *ProgramArguments* (argv), *RunAtLoad*, *KeepAlive* (bool or conditions)
+- activation: *StartInterval* / *StartCalendarInterval* (cron-like), *WatchPaths* / *QueueDirectories* (path activation), *Sockets* (launchd creates the socket, hands it over = socket activation, inetd-style), *MachServices* (register a mach name = XPC/mach activation)
+- *ThrottleInterval*, *ProcessType*, *UserName*, *LimitLoadToSessionType*, *EnvironmentVariables*
+
+* launchctl (modern syntax - the old load/unload is deprecated)
+- *launchctl print system* / *launchctl print gui/$(id -u)* - inspect a domain + all its services (super useful recon)
+- *launchctl print system/com.apple.foo* - one service's full state
+- *launchctl bootstrap <domain> <plist>* / *bootout* - load/unload (replaces load/unload)
+- *launchctl enable/disable <domain/label>*, *kickstart -k <domain/label>* (restart), *blame*
+- legacy still works: *launchctl load -w plist*, *launchctl list*
+
+* why attackers care
+- launchd plists are THE classic persistence (see [[id:c6a13d38-f075-4bb1-a966-122b66400beb][.]] [[id:38799f74-42b0-45b9-afcb-6191109245b1][Persistence]]). modern macOS now *notifies the user* when a LaunchAgent/Daemon is installed via BackgroundTaskManagement -> [[id:0361e3e2-1087-49a3-b7e6-a3c840d614af][Login Items & BTM]]
+- MachServices entries = XPC endpoints, a prime lateral/LPE target

@@ -1,0 +1,30 @@
+:PROPERTIES:
+:ID:       8140d084-9430-4851-89a4-695cc55fc85a
+:END:
+#+title: ObjC Runtime
+
+Objective-C is dynamic - method calls are resolved at runtime by libobjc, not linked statically. This is why macOS RE is so productive (class/method names survive in the binary) and how hooking works. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* objc_msgSend
+- *[obj doThing:x]* compiles to *objc_msgSend(obj, @selector(doThing:), x)*
+- objc_msgSend looks up the selector in the object's class *method cache* -> class method list -> superclass chain, then jumps to the IMP (function pointer). a *selector* (SEL) is just an interned string
+- because dispatch is by string name at runtime, the class names, selectors and method types are all present in the [[id:c66ac780-d083-48d4-a277-e8ea053e3ffe][Mach-O]] __objc_* sections - free symbols for the reverser
+- on arm64e the isa pointer + method cache are PAC-signed
+
+* object layout
+- an object is a struct whose first field is *isa* -> its Class. Class is itself an object (its isa -> metaclass). classes hold: superclass, method list, ivar list, protocol list, property list
+- *isa* is a "non-pointer isa" now: packed bitfield (class ptr + refcount bits + flags), not a raw pointer
+
+* introspection / RE
+- *class-dump* / *dsdump* / Hopper reconstruct @interface headers from the metadata (see [[id:aa239ad7-0896-47fa-a012-9065ad47a80d][RE tooling]])
+- runtime API: class_getInstanceMethod, method_getImplementation, objc_getClassList, ivar_getOffset
+- lldb: *po <obj>* (print object), *(lldb) expr -O -- obj*, *image lookup -rn <regex>* to find methods
+
+* swizzling & hooking (the hooking primitive)
+- *method swizzling* - swap two methods' IMPs at runtime with method_exchangeImplementations (legit for instrumentation, also the basis of many hooks)
+- *[[id:cfdfddc9-2fac-421d-a105-9983b780b9f6][dyld]] interposing* + fishhook-style rebinding for C symbols; objc swizzling for objc methods
+- Frida does this dynamically (ObjC.classes, Interceptor)
+- +load / +initialize run early - injection via a loaded dylib often hooks in +load
+
+* KVO / associated objects / categories
+- categories add methods to existing classes at load; associated objects bolt state onto instances - both are runtime tricks worth recognizing in RE

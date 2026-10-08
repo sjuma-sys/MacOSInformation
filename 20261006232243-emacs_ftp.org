@@ -1,0 +1,108 @@
+:PROPERTIES:
+:ID:       1a46c4cb-b91f-4a2b-ad1a-c6fe51ec9a85
+:END:
+#+title: Emacs FTP — opening FTP servers as if they were local folders
+#+filetags: :emacs:ftp:tramp:networking:
+
+Emacs connects to FTP through *TRAMP*, the same layer that does =/ssh:=. Under the hood
+TRAMP hands =/ftp:= paths to the built-in *ange-ftp*, which drives the command-line
+=ftp= client (=/usr/bin/ftp=, already installed). Nothing needs configuring: put
+=/ftp:user@host:= in front of a path anywhere Emacs asks for a file, and files, dired,
+eshell and imgsort all work on the server. Checked 2026-10-06 on Emacs 31.1 against the
+public test server =test.rebex.net=.
+
+* Connecting
+
+** Open a file or folder: =C-x C-f= / =C-x d=
+
+#+begin_example
+C-x C-f /ftp:user@host:/path/to/file.txt RET     open a file
+C-x d   /ftp:user@host:/path/ RET                dired listing of a folder
+C-x d   /ftp:user@host#2121:/ RET                non-standard port (# then the port)
+C-x d   /ftp:anonymous@ftp.example.org:/pub/ RET anonymous login (no password asked)
+#+end_example
+
+- The first access asks =Password for user@host:= in the minibuffer. The connection then
+  stays open for the session.
+- Shortcut: =/anonymous@host:/= and =/ftp.anything.org:/= pick FTP *without* the =ftp:=
+  part. Plain =/user@host:/= means *scp/SSH*, so always write =/ftp:= for a normal login.
+- Tab completion works on the remote path (=/ftp:user@host:/pu TAB=).
+
+** Try it now (public test server, read-only)
+
+#+begin_example
+C-x d /ftp:demo@test.rebex.net:/ RET      password: password
+#+end_example
+
+Its =pub/example/= has PNGs, which is handy for trying imgsort (see below).
+
+** Saving the password: =~/.netrc=
+
+ange-ftp reads *=~/.netrc=* (=ange-ftp-netrc-filename=). It does *not* read =~/.authinfo=:
+tested, it still prompted. One line per server:
+
+#+begin_src conf
+machine ftp.example.org login sierra password s3cret
+machine test.rebex.net  login demo   password password
+#+end_src
+
+=chmod 600 ~/.netrc= (ange-ftp refuses a file other people can read). The command-line
+=ftp= and =curl= use the same file. To keep it encrypted instead, the untested option is
+=(setq ange-ftp-netrc-filename "~/.authinfo.gpg")= with the same line format.
+
+* Doing things on the server
+
+| What                        | How                                                                                                                       |
+|-----------------------------+---------------------------------------------------------------------------------------------------------------------------|
+| Browse / manage files       | dired on the =/ftp:= path: =C= copy, =R= rename/move, =D= delete, =+= mkdir, =m= marks                                    |
+| Upload / download           | =C= in dired between a local and an =/ftp:= window (with =dired-dwim-target= the other window is the default destination) |
+| Edit a file in place        | =C-x C-f= it, edit, =C-x C-s=; it's uploaded on save                                                                      |
+| Shell-style                 | eshell: =cd /ftp:user@host:/pub=, then =ls=, =cp file ~/=                                                                 |
+| Raw FTP prompt              | =M-x ftp= → host: an interactive =ftp>= session in a buffer (=get=, =put=, =ls=, =bin=)                                   |
+| Come back later quickly     | in the dired buffer, =C-x r m= sets a bookmark; =C-x r b= jumps to it and reconnects                                      |
+| Sort / de-dupe photos there | =C-c i s= / =C-c i d= on the =/ftp:= folder, see below                                                                    |
+
+*Not possible over FTP:* running commands on the server (=M-!=, =compile=,
+=shell-command= in an =/ftp:= directory). FTP has no remote shell, and Emacs reports
+"Unknown remote command". If you need that, use =/ssh:= or =/sftp:=.
+
+* imgsort over FTP
+
+=C-c i s= (sort/name) and =C-c i d= (duplicates) work on =/ftp:= folders, subfolders
+included. imgsort copies the images into its local mirror (=~/.cache/imgsort/mirror/=),
+analyses them here, and renames or trashes them on the server through ange-ftp. FTP
+can't run =find=, so the file list comes from walking the folders, which is slower on big
+trees. On a *read-only* server it says "can't save .imgsort/ on the remote host … kept
+locally" and carries on. Tested on =/ftp:demo@test.rebex.net:/pub/example/=: it found
+=KeyGenerator.png= and =KeyGeneratorSmall.png= as the same picture at two sizes. Manual:
+[[id:63fd0329-3dc0-44cd-a43f-f7c3c2832b9b][imgsort]].
+
+* Security: FTP is plaintext
+
+Plain FTP sends the password and the files *unencrypted*.
+- If the server also speaks SSH, use =/sftp:user@host:/= or =/ssh:user@host:/= instead.
+  Same usage, encrypted, and remote commands work.
+- *FTPS* (FTP over TLS) isn't supported by ange-ftp. Use =lftp= from a shell
+  (=sudo apt install lftp=, then =lftp -u user ftps://host=), or =curl --ssl-reqd
+  ftp://host/path -u user= for single files.
+
+* Troubleshooting
+
+- *Hangs on "Listing…" or dies on transfers*: usually NAT/firewall. Switch to passive
+  mode: =(setq ange-ftp-try-passive-mode t)=, or temporarily with =M-:=. To make it
+  permanent, add it to =~/.emacs.d/config.org=.
+- *"Can't connect to `2001:…:21': Connection refused"*: the server has no FTP on that
+  address. It's either down (ftp.gnu.org shut its FTP off) or IPv6-only trouble; try the
+  IPv4 address as the host.
+- *See what's happening*: buffer =*ftp user@host*= holds the full FTP conversation.
+- *Stuck or wedged connection*: =M-x ange-ftp-kill-ftp-process= in that buffer, or
+  =M-x tramp-cleanup-all-connections=, then open the path again.
+- *Wrong password cached*: kill the connection as above; it asks again. Fix =~/.netrc= if
+  the bad one came from there.
+
+* Related
+
+- [[id:ac4232db-b80f-4bf8-bc04-b8fb4a890da3][Dired — advanced marking, searching, and view restriction]]: everything there works on =/ftp:= listings
+- [[id:e6e49ad6-d498-4f90-bcd9-0a6f45fe3dda][Eshell — effective and advanced use]]: =cd= into =/ftp:= paths
+- [[id:63fd0329-3dc0-44cd-a43f-f7c3c2832b9b][imgsort]]: photo sorting and duplicates, works over FTP
+- Built-in manuals: =C-h i m tramp RET= (look for "ftp"), =C-h i m emacs RET= → Remote Files

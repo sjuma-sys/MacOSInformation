@@ -1,0 +1,9 @@
+:PROPERTIES:
+:ID:       94b85d38-b049-4bb0-88ce-85fcdb8cddd0
+:END:
+#+title: MacOS lcov
+
+creates a file that contains all of the code coverage from regression testing
+
+after this you can take the outputted file and run *genhtml -o javascriptcore-html -f javascriptcore.lcov* (genhtml is built into lcov)
+

@@ -1,0 +1,26 @@
+:PROPERTIES:
+:ID:       433504f9-7c04-4551-8eff-6180407b80ad
+:END:
+#+title: MacOS dyldSharedCache
+
+Gotcha that trips up anyone reversing a modern mac: *the system libraries dont exist as files on disk anymore*. otool/nm/reversing from [[id:294092df-f9da-4159-8ce4-936c31037752][MacOS Basic Architecture]] still work but the libs have to be extracted from the cache first. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* what it is
+- at build time apple merges thousands of system dylibs (libSystem, Foundation, AppKit, WebKit...) into one big *dyld shared cache* for fast launch + shared ASLR slide
+- so /usr/lib/libFoo.dylib is often just a stub - the real code is only inside the cache
+- location:
+  - modern: */System/Library/dyld/dyld_shared_cache_arm64e* (+ x86_64h). now split into numbered *subcaches* (.01 .02 ... .symbols)
+  - newer OSes relocate parts into *Cryptexes* under /System/Volumes/Preboot (OS-independent security updates / RSR)
+
+* extracting for RE
+- *dyld_shared_cache_util -extract /out/dir /System/Library/dyld/dyld_shared_cache_arm64e*  - pull individual dylibs back out
+- IDA / Ghidra / radare2 all have shared-cache loaders now, point them at the cache and pick the dylib
+- *dyld_info* (on 12+) inspects a binary/cache: *dyld_info -exports /path*
+
+* related: SSV
+- the entire system volume is a sealed read-only APFS snapshot (Signed System Volume) - you cant just edit a file in /System even with [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]] off, the seal breaks. see [[id:25d3f47d-2eac-4cef-abad-140722ea44be][MacOS APFS]]
+- so "patch a system dylib on disk" as a persistence/hooking trick is basically dead
+
+* why care
+- static analysis of any apple framework = extract from cache first, dont go looking for the .dylib
+- the shared slide means all these libs share one ASLR base per boot (see [[id:d5b866ac-68be-43d7-a1fa-7e4d20b966a0][ModernAntiExploitation]])

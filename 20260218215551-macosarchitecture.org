@@ -1,0 +1,126 @@
+:PROPERTIES:
+:ID:       294092df-f9da-4159-8ce4-936c31037752
+:END:
+#+title: MACOS Basic Architecture
+* Infrastructure
+Applications -> SAfari, Mail, iCal
+
+GUI -> Aqua
+
+Application environments -> BSD, x11, cARBON, Cocoa, AWT, Swing
+
+Libraries -> URL Parsing, Netowrking, Core audio, HTML rendering, etc
+
+[[id:b2f35b57-edf6-434a-92aa-4e53fd930449][XNUKernel]] -> [[id:457fe001-8599-4d84-9b66-123223ffd1df][MacOSBSDKernel]], [[id:cfe3bb0e-c360-456a-ac8a-c3e995f2e3cd][MacOSMachKernel]]
+
+Firmware -> EFI
+
+Hardware -> Apple hardware
+
+
+** Universal Binaries
+Universal binaries can run on any of the architecture that it supports
+Many binaries are universal binaries in MacOS, usually bearing PPC (PowerPC) and i386 (x86)
+
+you can compile binaries to be able to use this with the following commands
+    - gcc -arch ppc -arch i386 -o test-universal test.c
+
+you can check if something is a Mach-O executable using the `file` command
+
+** Mach-O file format
+There is a header which contains data declarations
+
+There is a load commands regoin where the commands for the file are stored
+
+There is a data segment where the datafor the executable is stored
+
+To review the headers you use [[id:752f485f-c3fb-4250-9221-e44e37359e52][MacOS otool]] by using the -f switchfor universal headers and the -h switch for Mach Header
+
+** Bundles
+Each application on MacOS is contained in a bundle.
+Tpical things you will find in this bundle are
+- The binary
+- The applications resources such as pictures or videos
+- Plist for launching the application for if its clicked via the GUI, very importantly this plist can be converted into a binary using [[id:64919166-82d3-42e0-978a-581ed9678dbb][MacOS plutil]]
+
+** Launchd
+Apples replacement for cron,xinetd,init etc. Used to initialize programs, allows processes to be started at various times or when conditions occue and checks some processes are always running.
+
+system wide launchd are stored in //System/Library//Launchagents and //System//Librbary//LaunchDaemons.
+User specific can be found in ~/Library/LaunchAgents
+
+The configuration files for launchd are also plists and are composed of three arfuements
+
+Label : Used to identify the job to launch
+Program arguements : necessary command lines to launch with the arguement
+Start Interval : When it should be triggered
+
+you load in the plists by putting them in one of the locations for launchagensts then loading them in using launchctl load pathtoplist
+
+you remove them with launchctl unload pathtoplist then delete it simply
+
+Launchd plists can be leveraged maliciously to create [[id:2deeccc8-b65c-4800-9f9b-ba0eaba32580][MacOS persistence]] etc.
+
+
+** OUTDATED: see [[id:d5b866ac-68be-43d7-a1fa-7e4d20b966a0][MacOS ModernAntiExploitation]]
+everything in the three sections below (library randomization / executable heap / stack protection) is Leopard-era. "ASLR is not a thing" is long false - full ASLR since 10.7, plus KASLR, PAC, W^X, PPL/SPTM now. read the modern note instead.
+
+** Library randomization
+Library randomisation is one of the anti-explotation measures which is employed by Apples leapord. It randomises the library as ASLR (Adddress system layout randomization) is not a thing as of Apple leapord times.
+
+It is not well documented but some information can be found on it by investigating the /var/db/dyld
+
+The library randomization does not prevent against local-prvilege escalation attacks
+
+It also runs functions in the same memory space on the same computer every time, across different computers it will however change (p41 for more info)
+
+This means some basic randomization occurs but majority is not randomized
+
+** Executable heap
+Another defensive measure which exists is making it harder to inject & execute shellcode, this is done by making as much of the process non-executable as possible.
+
+In intel this is done with the XD (Execute Disable) bit to store parts in memory and make them non-executable.
+In AMD there is a NX (No execute) bit that is used
+
+On MacOS XD is set for the entire stack on intel chips and trying to execute code from these areas triggers segmentation faults. This is useful but it is limited *due to the rest of the stack being exetueable*.
+
+The stack is however executable on a PPC chip which creates a parculiar issue due to the files being backwards compatible to work with ppc (the shellcode will however be completely wrong)
+
+you can also use the command mprotect in C# to be able to run code within the protected section in the stack
+
+** Stack protection
+Stack protection can be set by compiling with the -fstack-protector flag in GCC, you can check which binary is using it with the [[id:f4af5445-8aaa-4876-929e-807d3ce2663b][MacOS nm]] tool.
+
+You can however get around this by smashing the stack with many variables or overloading the stack
+
+** Firewall
+The MacOS firewall (ipfw) is not enabled by default and depends on [[id:457fe001-8599-4d84-9b66-123223ffd1df][MacOSBSDKernel]]. It only blocks *incoming connections* so malware usually will just branch out.
+
+** Sandboxing (seatbelt)
+(modern version -> [[id:023664b9-7735-435a-acec-b887156aeafb][MacOS AppSandbox]]. sandbox-exec is deprecated, its entitlement-driven + containerized now)
+MacOS offers a kernel extension known as seatbelt which sandboxes applications. To be sandboxed the applications explicitly need to call the sandbox_init() function, which has profiles already resident inside of the [[id:b2f35b57-edf6-434a-92aa-4e53fd930449][XNUKernel]]. You can use this sandbox using the sandbox-exec command.
+
+You can also write your own profile fir these though there was no documentation at the time of the book being created. Examples can be found in /usr/share/sanbox directory that can be used to buil;d your own sandbox profile, syntax is remarkably similar to elisps.
+
+You can however beat these guardrails by using some creative thining, one example is creating a file that is attached to a network share to beat network sanboxing.
+
+*** examples and profiles
+- NoInternet (TCP/IP networking blocked)
+- NoNetwork (all sockets are prohibited)
+- NoWrite (File system writes are not allowed
+- NoWriteExceptTemporary (writes are restricted to tmp directory in /var/tmp)
+- ProfilePureComputation (all OS systems are blocked)
+- sandbox-exec -n nonet /bin/bash
+- sandbox-exec -n nowrite /bin/bash
+
+  
+
+  
+
+        
+
+
+
+
+
+** 

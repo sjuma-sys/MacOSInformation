@@ -1,0 +1,47 @@
+:PROPERTIES:
+:ID:       3fb78f7d-ff01-47e0-bcc6-34a8f2ec0240
+:END:
+#+title: Systemd User Services for Long-Running Jobs
+#+filetags: :security:selfhosting:
+
+Running services as an unprivileged user with =systemctl --user=. Part of
+[[id:6781236f-8a25-4e1a-88c4-8c22af0c2aa9][Self-Hosted Service Hardening]].
+
+* Survive logout and reboot
+#+begin_src bash
+loginctl enable-linger          # without this, units die at logout
+systemctl --user enable --now myunit
+#+end_src
+
+* Type=oneshot + RemainAfterExit: the trap
+For a unit whose ExecStart *starts* something and exits (e.g. =podman run -d=):
+#+begin_src conf
+Type=oneshot
+RemainAfterExit=yes
+#+end_src
+systemd then believes the service is active forever. Consequences:
+- If the container dies underneath, systemd does *not* notice.
+- =systemctl --user start= becomes a silent no-op. Recovery is running the
+  start script directly, or =restart=.
+- =Restart=on-failure= therefore only fires when *ExecStart itself* exits
+  non-zero — i.e. a start failure. It will never resurrect something an
+  external monitor deliberately stopped. That is usually exactly what you
+  want; see [[id:0ace5380-25db-40c2-b534-8d375805a980][Container Incident Response and Forensics]].
+
+* Directive placement
+=StartLimitBurst= and =StartLimitIntervalSec= belong in *[Unit]*, not
+[Service], on modern systemd. In the wrong section they are silently
+ignored.
+
+* Depend on the filesystem your code lives on
+#+begin_src conf
+RequiresMountsFor=/games/cc/stemstrip
+#+end_src
+Otherwise a unit can start before a secondary drive is mounted and fail
+with exit 127 (command not found). See [[id:41fb4a2e-cb34-4e40-819a-69bf311d44bf][Boot Ordering Races in Self-Hosted Services]].
+
+* Give slow starts room
+=TimeoutStartSec=420= when ExecStart waits for hardware or retries.
+
+* Validate before trusting
+=systemd-analyze --user verify myunit.service=

@@ -1,0 +1,14 @@
+:PROPERTIES:
+:ID:       b084111e-114b-4333-94b4-103d5b56f1c2
+:END:
+#+title: NetworkFuzzingExample
+
+Testing Quick time player can be done with a QTL file that can be made with the follwoing code
+
+<?xml version="1.0"?>
+<?quicktime type="application/x-quicktime-media-link"?>
+<embed src="rstp://192.168.1.231:6789/test.mp4" autoplay="true"></embed>
+
+ take this and then simply run it against the quick time player with the file its saved to as a commmand line arguement then kill it a few times to make sure there is no hanging information
+
+Then you can use a proxy to see the communication between the application and the xrequests you have been sending out . Repeating the exact conditions may be difficult but as it sscripted you dont need to necessarily. YOu will also get a report ffrom an application named as [[id:b2052093-8a67-4b33-89cb-3135c0b78b65][MacOS CrashReporter]] which will tell you some information but it is not immeadiately kniown whether it si extractable

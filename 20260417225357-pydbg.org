@@ -1,0 +1,8 @@
+:PROPERTIES:
+:ID:       b40fadf2-11b5-4f76-a754-621fe3d2091a
+:END:
+#+title: PyDBG
+
+This is a tool for traversing memory accross different OS can be used for MacOS
+
+It is particularly useful for its ability to be able to programmatically febug information it has been done in the book pages 118-119 using known memory addresses for the programs at hand

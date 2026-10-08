@@ -1,0 +1,12 @@
+:PROPERTIES:
+:ID:       f4af5445-8aaa-4876-929e-807d3ce2663b
+:END:
+#+title: MacOS nm
+
+* usage
+nm is used to find out if there is stack protection on an application
+** example
+nm applicationname | grep stack
+- stack_chk_guard & stack_chk_fail will display if its there and if its not it will not be there
+
+

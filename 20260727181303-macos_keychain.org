@@ -1,0 +1,34 @@
+:PROPERTIES:
+:ID:       1d07fae1-efa2-4922-8887-61e4402cf561
+:END:
+#+title: Keychain & SEP
+
+Where secrets live and the hardware that guards them. Extends the SEP intro in [[id:25d3f47d-2eac-4cef-abad-140722ea44be][APFS]]. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the keychain
+- encrypted credential store managed by *securityd* / *SecKeychain* (legacy file keychains) and the modern *data-protection keychain* (kSecClass items: passwords, keys, certs, identities)
+- legacy file keychains: *~/Library/Keychains/login.keychain-db* (unlocked by your login password), and the *System keychain* /Library/Keychains/System.keychain (wifi, 802.1x, machine certs)
+- items have *ACLs* + can be gated by a code-signing [[id:2e1db5fd-d76e-47f6-9124-4b61d30d1667][Designated Requirement]] - "only THIS app (by signature) may read this item" -> so impersonating an app's signature = reading its secrets
+- CLI: *security dump-keychain*, *security find-generic-password -s name -w*, *security add-generic-password*, *security unlock-keychain*
+
+* iCloud keychain
+- syncs a subset via iCloud with end-to-end encryption + syncing circles (SOS) / PCS. escrow protected by the SEP + a per-user recovery
+
+* Secure Enclave (SEP)
+- a separate SoC coprocessor running its own OS (*sepOS*) with its own boot chain (see [[id:24793b48-0d1e-4929-8f8b-6161a6a517a4][BootChain]]). the CPU can request operations but never sees the keys
+- responsibilities:
+  - stores the *UID key* (fused per-device, never extractable) - all data-at-rest keys derive from it, so data is cryptographically bound to that exact chip
+  - Touch ID / Face ID: the biometric match happens *inside* SEP, it only tells the AP yes/no + releases keys
+  - wraps FileVault/volume keys and the *data protection class keys*
+  - anti-replay/anti-bruteforce counters for the passcode
+
+* data protection (per-file encryption classes, from iOS)
+- files tagged with a protection class whose key is available only in certain states:
+  - *Complete* (locked until first unlock, key evicted when locked)
+  - *CompleteUntilFirstUserAuthentication* (the common default - available after first unlock until reboot)
+  - *CompleteUnlessOpen*, *NoProtection*
+- forensics angle: a powered-off / never-unlocked device's Complete-class data is unrecoverable without the passcode; *AFU* (after first unlock) state leaks a lot more
+
+* attacker/forensics relevance
+- keychain extraction (with login password / FDA) is a top post-exploitation goal - [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][DFIR]] tools (chainbreaker) parse the keychain files
+- SEP itself is a hard target - separate exploit surface (sepOS), rarely broken

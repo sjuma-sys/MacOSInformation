@@ -1,0 +1,34 @@
+:PROPERTIES:
+:ID:       6ee75269-c2a4-4aa4-8a07-7d1e404c4b5a
+:END:
+#+title: MacOS Gatekeeper
+
+The gate on running downloaded code: quarantine + code signature + notarization checks. Ties directly to the old [[id:2f8f793a-665e-4743-a354-06de05ffd447][file handling]] / safe-filetypes stuff but way stricter now. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* quarantine
+- when a sandboxed downloader (safari, mail, messages, curl does NOT) writes a file it tags it with the *com.apple.quarantine* extended attribute
+- see it: *xattr -l file*  or  *xattr -p com.apple.quarantine file*
+- strip it (defeats gatekeeper for that file): *xattr -d com.apple.quarantine file*  or  *xattr -cr app.app*
+- the LRiskCategory / DownloadAssessment stuff from the filehandling note is the ancestor of this
+
+* gatekeeper assessment
+- on *first launch* of a quarantined app, gatekeeper (syspolicyd) checks:
+  1. valid [[id:dd71c41f-c6cb-436e-a146-e45b51ffbce3][code signature]] (developer ID or app store)
+  2. app is *notarized* -> [[id:dd71c41f-c6cb-436e-a146-e45b51ffbce3][see notarization/stapling]]
+  3. not on the XProtect blocklist
+- manage/query with *spctl*:
+  - *spctl --status*  (assessments enabled?)
+  - *spctl -a -vvv /path/app.app*  (would this be allowed to run)
+  - *spctl --add* / historically *spctl --master-disable* to turn it off (removed from UI in recent versions)
+- newer: *gktool* and per-launch prompts
+
+* notarization
+- since 10.14/10.15 apple wants dev-ID software submitted to their notary service. apple scans it for malware and issues a *ticket*
+- dev *staples* the ticket to the app so it verifies offline: *xcrun stapler staple app.app*, check with *stapler validate*
+- not signing/CA - its a malware scan + revocable ticket. apple can kill a notarization ticket remotely
+- unnotarized dev-ID app = gatekeeper blocks on first run
+
+* the bypass surface
+- the classic move is just avoiding the quarantine bit (delivery that doesnt set it, or archive formats/tricks that lose the xattr on extract) - lots of historical CVEs here
+- Sequoia (15) killed the right-click->Open bypass, now you must approve in System Settings > Privacy & Security
+- XProtect + XProtectRemediator = apples built in AV, yara-ish rules apple pushes out of band

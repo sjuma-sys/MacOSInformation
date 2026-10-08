@@ -1,0 +1,42 @@
+:PROPERTIES:
+:ID:       2bfa84c8-98dd-4601-8f75-67be82fa9b83
+:END:
+#+title: MacOS Tracing & debugging
+
+In MacOS there is no real ptrace as it doesnt allow registers to be written/read
+
+* Mac specific GDB commands
+info mach tasks
+- gives information related to the threads
+info mach regions
+  - tells you information about the memory
+ info mach-region [hexaddress]
+
+* Dtrace
+[[id:a00daff0-10a5-4d51-94bc-c1e44348daa2][MacOS Dtrace]]
+
+* Memory reading information
+When using an application like dtrace you can find out where the different things in memory are available on page 108-110
+Using Dtrace we can get information on what library is being used within the application.
+
+An example of this is the code below which will display the different code corresponding to instructiond from jsRegexp:
+
+pid$target:JavaScriptCore:jsRegExpCompile*:
+{
+        printf(08%x\n", uregs[R_EIP]);
+}
+
+You would execute this with the following dtrace command following saving as instruction_tracer.d:
+*sudo dtrace -qp 65567 -s instruction_tracer.d*
+
+you can also do the same for other libraries such as the core library using the code below
+
+pid$target:JavaScriptCore::entry
+{
+        printf("08%x:%s\n", uregs[R_EIP], probefunc);
+}
+
+this can again be run with *sudo dtrace -qp 65567 -s instruction_tracer.d*
+
+
+

@@ -1,0 +1,37 @@
+:PROPERTIES:
+:ID:       c66ac780-d083-48d4-a277-e8ea053e3ffe
+:END:
+#+title: Mach-O Format
+
+The executable/dylib/bundle format. The [[id:294092df-f9da-4159-8ce4-936c31037752][architecture note]] had the 3-part sketch (header/load commands/data); this is the real structure. Inspect with [[id:752f485f-c3fb-4250-9221-e44e37359e52][otool]] / *nm* / *dyld_info* / *pagestuff* / Hopper. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* layout
+1. *mach_header(_64)* - magic (0xfeedfacf = 64bit), cputype/subtype, filetype (EXECUTE, DYLIB, BUNDLE, DSYM, KEXT_BUNDLE...), ncmds, flags (PIE, TWOLEVEL, etc)
+2. *load commands* - a sequence of variable-size commands telling dyld/kernel how to set the image up
+3. *segments -> sections* - the actual data
+
+* fat/universal binaries
+- a *fat_header* wraps multiple arch slices (see [[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]] universal2). *lipo*/*otool -f* to inspect. each slice is a full mach-o
+
+* key load commands
+- *LC_SEGMENT_64* - defines a segment mapped into memory: __PAGEZERO (unmapped guard at 0), __TEXT (r-x: code + __cstring + objc metadata), __DATA / __DATA_CONST (rw / ro-after-fixup), __LINKEDIT (symbol/reloc/signature tables)
+- *LC_MAIN* - entry point (replaced LC_UNIXTHREAD)
+- *LC_LOAD_DYLIB* / *LC_LOAD_WEAK_DYLIB* / *LC_REEXPORT_DYLIB* - dependencies (see [[id:cfdfddc9-2fac-421d-a105-9983b780b9f6][dyld]])
+- *LC_ID_DYLIB* - a dylib's own install name (@rpath/@loader_path/@executable_path matter for hijacking)
+- *LC_RPATH* - runtime search paths
+- *LC_DYLD_INFO(_ONLY)* - old: rebase/bind/lazy-bind/export opcode streams
+- *LC_DYLD_CHAINED_FIXUPS* + *LC_DYLD_EXPORTS_TRIE* - modern (chained fixups) replacement, pointers pre-linked in a chain, fixed up at load with the slide (and PAC-signed on arm64e)
+- *LC_SYMTAB* / *LC_DYSYMTAB* - symbol tables (nlist)
+- *LC_CODE_SIGNATURE* - points into __LINKEDIT at the signature SuperBlob -> [[id:2e1db5fd-d76e-47f6-9124-4b61d30d1667][CodeSigning Internals]]
+- *LC_ENCRYPTION_INFO_64* - FairPlay/app encryption (cryptid) - iOS mostly
+- *LC_BUILD_VERSION* / *LC_VERSION_MIN_* - platform + min OS
+- *LC_UUID* - build uuid, used to match a binary to its .dSYM for symbolication
+
+* objc + swift metadata
+- objc lives in __TEXT/__DATA sections: __objc_classlist, __objc_selrefs, __objc_methname, __objc_const... this is what class-dump / [[id:8140d084-9430-4851-89a4-695cc55fc85a][ObjC runtime]] tools parse
+- swift metadata in __swift5_* sections
+
+* inspection cheatsheet
+- *otool -h* header, *otool -l* load commands, *otool -L* dependencies, *otool -tV* disasm, *otool -s __TEXT __cstring* dump a section
+- *nm -m* symbols w/ detail, *dyld_info -exports/-fixups*, *codesign -dvvv* signature
+- *size -m -l -x* segment/section sizes

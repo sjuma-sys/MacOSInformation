@@ -1,0 +1,6 @@
+:PROPERTIES:
+:ID:       b2052093-8a67-4b33-89cb-3135c0b78b65
+:END:
+#+title: MacOS CrashReporter
+
+LOcated at ~/Library/LOgs/CrashReporter and each application will have a report at that location under the applications name

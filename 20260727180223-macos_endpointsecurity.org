@@ -1,0 +1,28 @@
+:PROPERTIES:
+:ID:       be6bd260-d8f9-4c95-aeb7-a3dad6786f13
+:END:
+#+title: MacOS EndpointSecurity
+
+Endpoint Security Framework (ESF), since 10.15. The supported API for watching/blocking security-relevant events - every modern mac EDR/AV/DFIR tool is built on it. Replaces the old kauth kext + OpenBSM auditing. A [[id:e136fffc-9d87-4d4d-b639-7346e75ab9e3][SystemExtension]] flavour. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* what it does
+- an *es_client* subscribes to kernel-sourced events: process exec/fork/exit, file open/create/unlink/rename, mmap, mount, kext load, ptrace, task_for_pid, signal, etc (ES_EVENT_TYPE_*)
+- two classes of event:
+  - *NOTIFY* - after the fact, telemetry
+  - *AUTH* - synchronous, your client must ALLOW/DENY before the op proceeds (this is how EDR blocks stuff). you have a deadline or the OS auto-responds
+- rich context per event: full code signing info, cdhash, team id, path, args - way better than the old ktrace/dtrace-based visibility from [[id:2bfa84c8-98dd-4601-8f75-67be82fa9b83][Tracing & debugging]]
+
+* requirements
+- *com.apple.developer.endpoint-security.client* entitlement (apple gates this, needs to be provisioned)
+- the process needs Full Disk Access ([[id:4549c774-a44c-4af1-9087-c9035a228603][TCC]]) and must run as root
+- ships as a system extension, user-approved
+
+* the free built-in tool
+- *eslogger* (in /usr/bin, on 12+) dumps ESF events as json without writing any code:
+  - *sudo eslogger exec fork > events.json*  - firehose of process launches
+  - *sudo eslogger --list-events*  - all subscribable event types
+- great for DFIR / seeing what an app actually does
+
+* attacker/defender relevance
+- this is what youre up against on a monitored mac - assume exec/file/network events are all captured with signing context
+- evasion research targets: events NOT covered by ESF, muting/unsubscribing, or killing/blinding the es_client before acting

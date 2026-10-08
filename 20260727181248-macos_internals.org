@@ -1,0 +1,43 @@
+:PROPERTIES:
+:ID:       1ed09f91-ca86-476a-bcd6-86f1cecc17f2
+:END:
+#+title: MacOS Internals
+
+Index of the deep-dive notes. The [[id:0e1a35b2-48f6-48b9-9627-852256d40990][MacOS]] hub follows the (Leopard-era) book; [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]] covers the modern security pillars; this note maps how the OS actually works under the hood. Canonical refs: *OS X Internals (Levin)*, the *MacOS/iOS Internals vol I-III* set (Jonathan Levin, newosxbook.com), Apple's opensource ([[id:af0c1c7d-6480-40fb-b7b2-8f1d73d53a5c][see finding bugs note]]).
+
+* boot & platform
+- [[id:24793b48-0d1e-4929-8f8b-6161a6a517a4][MacOS BootChain]] - BootROM -> iBoot -> kernelcache, secure boot, DFU, recovery
+- also [[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]] and [[id:25d3f47d-2eac-4cef-abad-140722ea44be][MacOS APFS]]
+
+* kernel ([[id:b2f35b57-edf6-434a-92aa-4e53fd930449][XNU]] = [[id:cfe3bb0e-c360-456a-ac8a-c3e995f2e3cd][Mach]] + [[id:457fe001-8599-4d84-9b66-123223ffd1df][BSD]])
+- [[id:88d472c2-752d-4871-bbba-cd8801ccda02][Mach IPC & Ports]] - the heart of everything
+- [[id:cb954714-22bb-4698-a6e9-d3b92b83c35a][Mach VM]] - virtual memory / vm_map / pmap
+- [[id:d772b6f6-7cc9-4145-b23c-17453afc8073][MacOS Syscalls]] - mach traps + BSD unix syscalls + sysctl
+- [[id:5acf211b-a96d-4fdc-be24-1fd639158e2a][MACF]] - the MAC framework under sandbox/SIP/AMFI
+- [[id:a260e433-3b04-486d-b7e7-22d1591ba6af][I/O Kit]] + [[id:9e71c276-f849-4407-ba28-128e2e9fec1d][IOKit UserClients]] - driver attack surface
+- [[id:fef29f8b-9378-4407-b2b7-c19d2b5868ca][Kernel Debugging & Panics]]
+
+* userland loading & execution
+- [[id:c66ac780-d083-48d4-a277-e8ea053e3ffe][Mach-O Format]] - the executable format in depth
+- [[id:cfdfddc9-2fac-421d-a105-9983b780b9f6][dyld]] - the dynamic linker / loader
+- [[id:fed28c72-5b99-4484-a2f0-7aa7ee7fdb6b][launchd]] - PID 1, the service manager
+- [[id:9abafa8b-2560-4661-8762-353388054edb][GCD / libdispatch]] - concurrency
+- [[id:8140d084-9430-4851-89a4-695cc55fc85a][ObjC Runtime]] + [[id:bae15ec1-7f77-4709-8252-d580a543c3ca][Frameworks & Layering]]
+
+* security internals
+- [[id:2e1db5fd-d76e-47f6-9124-4b61d30d1667][CodeSigning Internals]] - the signature blob format & requirements language
+- [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]] - the enforcer
+- [[id:1d07fae1-efa2-4922-8887-61e4402cf561][Keychain & SEP]] - key storage / data protection
+- [[id:18ebcc74-3a1d-4150-bc52-d803897797a1][Sandbox Internals]] (SBPL) - deeper than [[id:023664b9-7735-435a-acec-b887156aeafb][AppSandbox]]
+- [[id:5ac1af8c-d487-48c7-b09b-6a2b33ac88bf][AuthorizationServices]] + privileged helpers
+- [[id:08473fee-1f06-4b0f-9d1d-712252c2c547][XProtect / MRT]] - apple's built-in AV
+- [[id:38799f74-42b0-45b9-afcb-6191109245b1][Persistence (modern)]] + [[id:0361e3e2-1087-49a3-b7e6-a3c840d614af][Login Items & BTM]]
+- [[id:c6a13d38-f075-4bb1-a966-122b66400beb][Networking]]
+
+* tooling (RE / debug / DFIR)
+- [[id:be566665-b445-4b29-92d3-85fcd94048dd][lldb]] - the debugger (gdb is dead)
+- [[id:c37cdbd3-c8af-4240-9e51-2d62e2345299][Unified Logging]] - the log command (syslog/ASL are dead)
+- [[id:9889f872-5f75-4927-a437-6278d9754569][Performance & Tracing Tools]] - fs_usage, dtruss, sample, spindump, vmmap...
+- [[id:aa239ad7-0896-47fa-a012-9065ad47a80d][Modern RE Tooling]] - hopper/ghidra/ida/frida/class-dump
+- [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][DFIR Artifacts]] - forensic timeline sources
+- [[id:aa56c47e-71af-4210-8713-a54d02859fc8][xattr & Metadata]] + [[id:5c5adb87-ccbc-4a27-994d-94ac38a9c2c6][Preferences System]]

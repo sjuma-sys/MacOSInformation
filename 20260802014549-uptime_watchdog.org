@@ -1,0 +1,46 @@
+:PROPERTIES:
+:ID:       7036679c-7a53-4da5-91b0-074374bded58
+:END:
+#+title: Uptime Watchdog Design
+#+filetags: :security:selfhosting:
+
+A probe that tells you the service is down *and* does something sensible.
+Part of [[id:6781236f-8a25-4e1a-88c4-8c22af0c2aa9][Self-Hosted Service Hardening]].
+
+* Alert on state change, not on state
+Alerting every probe during an outage trains you to ignore the channel.
+Persist the last state to a file; alert on up→down and down→up only.
+
+* Retry before alerting
+One failed probe is a blip. Probe, wait ~5 s, probe again, then decide.
+
+* Recover once, then escalate
+Attempt exactly one automatic restart and report whether it worked. An
+unbounded restart loop hides a real fault and can flap forever.
+
+* Be incident-aware — the important part
+If the security monitor stopped the container deliberately, the watchdog
+must *not* restart it:
+#+begin_src bash
+NEWEST=$(ls -1t security/incidents 2>/dev/null | head -1)
+# if an incident dir exists and is recent -> alert URGENT, do not restart
+#+end_src
+Otherwise the availability tool silently undoes the security tool and
+hands a compromised container back to the internet. See
+[[id:0ace5380-25db-40c2-b534-8d375805a980][Container Incident Response and Forensics]].
+
+* Delivery
+ntfy is a good fit: one HTTP POST, works on a phone, self-hostable.
+#+begin_src bash
+curl -H "Title: service is DOWN" -H "Priority: urgent" \
+     -H "Tags: rotating_light" -H "Click: https://example.com/" \
+     -d "body text" https://ntfy.sh/your-topic
+#+end_src
+Share one config key across every reporter so there is a single place to
+change the destination. Note ntfy.sh topics are public — anyone who knows
+the topic name can read it, so pick an unguessable one.
+
+* Test it by actually breaking things
+Stop the service and watch the alert arrive; plant a fake incident
+directory and confirm it refuses to restart. An untested monitor is a
+belief, not a control.

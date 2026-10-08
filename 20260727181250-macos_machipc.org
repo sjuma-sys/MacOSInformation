@@ -1,0 +1,37 @@
+:PROPERTIES:
+:ID:       88d472c2-752d-4871-bbba-cd8801ccda02
+:END:
+#+title: Mach IPC & Ports
+
+The single most important concept in [[id:cfe3bb0e-c360-456a-ac8a-c3e995f2e3cd][Mach]]/[[id:b2f35b57-edf6-434a-92aa-4e53fd930449][XNU]]. Almost everything - [[id:592f3484-b2e9-4d15-bd0e-811583a18688][XPC]], drivers, syscalls to the kernel, task control - rides on mach ports. The old note said Mach security is "based on port rights"; this is what that means. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* mach ports
+- a *port* is a kernel-managed, unidirectional message queue. userland only ever holds a *port right* (an opaque name, an integer in your task's port namespace), never the port itself
+- rights:
+  - *RECEIVE* - you own the queue, you dequeue messages. exactly one receiver
+  - *SEND* - you can enqueue messages. many senders allowed
+  - *SEND_ONCE* - single-use send (used for replies)
+  - *PORT_SET* - group receive rights to listen on many at once
+- rights are the capability. holding a send right to something = the authority to talk to/act on it. this is a capability model, not a unix uid model
+
+* task & thread ports (why this is dangerous)
+- every task (process) has a *task port* (aka task_self, mach_task_self()). *whoever holds the send right to a task's port controls that task completely* - read/write its memory (mach_vm_read/write), create threads, set registers
+- *task_for_pid(pid)* converts a pid to its task port - the classic "inject into another process" primitive. now gated hard by [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]], [[id:d61f1aa0-8e56-4c0e-b4a5-f6d6ee3a0f39][AMFI]] (needs get-task-allow or being a debugger with the right entitlement), and platform-binary rules
+- thread ports similarly = control a thread
+- special ports: host port, host_priv (root-ish kernel control), the bootstrap port
+
+* messages & mach_msg
+- everything is *mach_msg()* (the fundamental trap). a message = header + optional typed body
+- messages can carry *port rights* (pass a capability to another task) and *out-of-line memory* (VM copied/moved between tasks) - this is how you hand a file descriptor-like capability or a big buffer across processes
+- complex bugs live here: port right over-release / UAF (the famous mach_port_* refcount bugs), OOL memory tricks
+
+* MIG (Mach Interface Generator)
+- writing raw mach_msg is painful, so kernel & daemon interfaces are defined in *.defs* files and *mig* generates client/server stubs (like an RPC IDL)
+- tons of the kernel's userland-facing API and daemon APIs are MIG. MIG bugs (type confusion, missing checks in the generated/hand-written server routine) are a rich seam
+
+* bootstrap / name lookup
+- how do you get a send right to a service you didn't spawn? the *bootstrap port* -> [[id:fed28c72-5b99-4484-a2f0-7aa7ee7fdb6b][launchd]] is the bootstrap server. services *bootstrap_check_in* to register a name; clients *bootstrap_look_up* to get a send right. this registry is what [[id:592f3484-b2e9-4d15-bd0e-811583a18688][XPC]] and launchctl expose
+
+* recon
+- *launchctl print system* shows registered mach services / endpoints
+- lldb: examine ports of a task; tools like Levin's *procexp* dump port rights

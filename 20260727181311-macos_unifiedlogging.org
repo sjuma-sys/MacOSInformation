@@ -1,0 +1,32 @@
+:PROPERTIES:
+:ID:       c37cdbd3-c8af-4240-9e51-2d62e2345299
+:END:
+#+title: Unified Logging
+
+Since Sierra (10.12) macOS logging is the *unified logging system* (os_log). *syslog / ASL / /var/log/system.log are dead* - almost nothing writes plain text logs anymore. The single most important skill for debugging + [[id:6fed62d7-fa24-4faf-8cee-90b46b916f7b][DFIR]] on modern macOS. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* how it works
+- logs are *structured, compressed binary* written by *logd* to */var/db/diagnostics/* (+ /var/db/uuidtext for the string catalog). not human-readable files - you query them
+- each message has: subsystem (com.apple.xxx), category, process, and a *type* (default/info/debug/error/fault)
+- *info* and *debug* levels are often not persisted by default (memory-only, dropped) - you may need to enable them
+
+* the log command
+- *log show* - dump historical logs. key flags:
+  - *log show --last 1h* / *--start "2026-07-27 10:00:00"*
+  - *log show --predicate 'process == "sandboxd"'*  (NSPredicate syntax)
+  - *--predicate 'subsystem == "com.apple.TCC"'* , *'eventMessage CONTAINS "denied"'*
+  - *--info --debug* to include those levels, *--signpost*
+- *log stream* - live tail: *log stream --predicate 'sender == "Sandbox"' --level debug*
+- *log collect* - snapshot the whole store into a .logarchive you can carry to another machine; then *log show archive.logarchive --predicate ...*
+- *log config* - change what's captured; *log erase* wipes (destroys forensic data - note in IR)
+
+* predicate fields worth knowing
+- process, processImagePath, sender (the lib/image), subsystem, category, eventMessage, messageType, senderImagePath. combine with AND/OR/CONTAINS/BEGINSWITH
+
+* forensics angle
+- unified log is a goldmine timeline: process launches, [[id:4549c774-a44c-4af1-9087-c9035a228603][TCC]] prompts, [[id:023664b9-7735-435a-acec-b887156aeafb][sandbox]] denials, network, auth, [[id:08473fee-1f06-4b0f-9d1d-712252c2c547][XProtect]] runs
+- BUT retention is short (hours-days, rolls over) and *log erase* / short TTL means you often must collect fast. *<private>* redaction hides sensitive fields unless a profile enables private data
+- a *sysdiagnose* bundles a logarchive + tons of state (trigger: ctrl-opt-cmd-shift-period)
+
+* code side
+- devs use *os_log(OS_LOG_DEFAULT, "msg %{public}s", x)* ; *%{private}* redacts. the *Console.app* GUI reads the same store live

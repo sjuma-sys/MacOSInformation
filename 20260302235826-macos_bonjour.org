@@ -1,0 +1,24 @@
+:PROPERTIES:
+:ID:       8cf123bd-2672-48aa-bd83-ea9472126a00
+:END:
+#+title: MacOS Bonjour / mDNS Responder
+* description
+Bonjour is a tool which is used to communicate with other devices on the same network. Its usage is based on the IETF Zero COnfiguration networking group and is as described below
+
+Bonjour can be unloaded with launchctl unload -w /System/Library/LaunchDaemons/com.apple.mDNSResponder.plist
+
+** usage 
+Allows an apple device to get an IP address (even without a DHCP server) using standards RFC 3946/ipv4 2496/ipv6
+Can do name address translation without a DNS server and achieves this with multicase DNS
+Service discovery is another requitement from IETF which bonjour fulfills, you can use the dns-sd binary to test this
+
+
+** mDNS Responder
+The source code for the mDNS responder can be found using open mDNSMacOSX/mDNSResponder.xcodeproj
+Bonjour has one of the only listening services in MacOS that comes outside of the box and with no additional configuration, this tool is the mDNSResponder and you can get the source code for it from the AppleCVSServer
+
+The function inside the project in charge of handling the untrusted data is derived from the mDNSCoreRecieve function and the raw data is recieved from the pkt variable.
+
+The function then breaks down the packet and transforms it into a recognised structure, changing the endianness and then calls either mDNSCoreRecieveQuery or mDNSCoreRecieveResponse to break down the data furhter
+
+

@@ -1,0 +1,25 @@
+:PROPERTIES:
+:ID:       bae15ec1-7f77-4709-8252-d580a543c3ca
+:END:
+#+title: Frameworks & Layering
+
+The library stack sketched in the [[id:294092df-f9da-4159-8ce4-936c31037752][architecture note]], properly. Knowing the layers tells you where a given API actually lives when reversing. Part of [[id:1ed09f91-ca86-476a-bcd6-86f1cecc17f2][MacOS Internals]].
+
+* the layers (bottom up)
+- *libsystem* (/usr/lib/libSystem.B.dylib) - the umbrella C library. re-exports libsystem_kernel (syscall stubs -> [[id:d772b6f6-7cc9-4145-b23c-17453afc8073][syscalls]]), libsystem_c (libc), libsystem_malloc, libsystem_pthread, [[id:9abafa8b-2560-4661-8762-353388054edb][libdispatch]], libsystem_info, etc. everything links this
+- *CoreFoundation* (CF) - C framework with an OO-ish object model (CFTypeRef, CFRetain/CFRelease, CFRunLoop, CFString, CFDictionary...). the C substrate under the objc frameworks
+- *Foundation* - the objc layer: NSString, NSArray, NSDictionary, NSObject, NSURLSession, NSXPCConnection. *toll-free bridged* with CF (an NSString IS a CFString, cast freely)
+- *AppKit* (mac GUI, "Cocoa" = Foundation+AppKit) vs *UIKit*/*SwiftUI* on other platforms. Aqua/[[id:b11b5b10-c20f-4ddd-88b2-3a5ade027ed2][the closed-source GUI]] sits here
+- higher services: CoreGraphics/Quartz, CoreServices ([[id:2f8f793a-665e-4743-a354-06de05ffd447][LaunchServices]]), Security.framework, IOKit.framework (userland IOKit), Metal, WebKit
+
+* where things physically are
+- almost none of these exist as standalone files anymore - they're all inside the [[id:433504f9-7c04-4551-8eff-6180407b80ad][dyld shared cache]]. extract before reversing
+- a *framework* bundle = versioned dir (Foo.framework/Versions/A/Foo + Headers + Resources)
+
+* toll-free bridging (a key RE gotcha)
+- CFString<->NSString, CFDictionary<->NSDictionary etc share memory layout, so in a disassembly you'll see CF C calls and objc_msgSend on the same objects. recognizing this untangles a lot
+
+* the runtimes
+- *ObjC* runtime -> [[id:8140d084-9430-4851-89a4-695cc55fc85a][ObjC Runtime]] note
+- *Swift* runtime (libswiftCore) - static-ish dispatch + witness tables, metadata in __swift5_* sections; interops with objc via @objc. reversing swift is harder (name mangling, no msgSend)
+- *BlocksRuntime* - clang blocks (^{ }) are objects with an isa + invoke ptr, used all over GCD/callbacks

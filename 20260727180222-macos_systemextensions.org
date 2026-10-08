@@ -1,0 +1,29 @@
+:PROPERTIES:
+:ID:       e136fffc-9d87-4d4d-b639-7346e75ab9e3
+:END:
+#+title: MacOS SystemExtensions
+
+Kexts are on death row. The kextstat/kextload/kextunload workflow in the [[id:a260e433-3b04-486d-b7e7-22d1591ba6af][MACOS I/O kit]] note still exists but is deprecated - modern drivers/security tools run in *userspace* as System Extensions. Part of [[id:68dac921-fa1e-4d7d-9f48-7f5d957dc66d][MacOS ModernSecurity]].
+
+* the shift (since 10.15 Catalina)
+- kexts run in the kernel = one bad driver panics/owns the box. apple is pushing everything out to userspace
+- three flavours of system extension, all sandboxed userspace processes:
+  - *DriverKit* (.dext) - device drivers (USB, HID, network, serial, etc)
+  - *Network Extensions* - VPNs, content filters, DNS proxies (replaces network kexts)
+  - *Endpoint Security* extensions -> see [[id:be6bd260-d8f9-4c95-aeb7-a3dad6786f13][EndpointSecurity]]
+- they need entitlements + user approval in System Settings, and ship inside an app bundle (Contents/Library/SystemExtensions)
+
+* still-a-kext reality
+- some things (esp older 3rd party) are still kexts. on [[id:dfdea695-feeb-4714-a411-76ef5cd74d62][Apple Silicon]] loading one needs *Reduced Security* + a reboot + explicit approval - deliberately painful
+- kext must be signed with a special kext-signing cert and pass [[id:9edc5a4f-7b3e-4398-94f3-828823c3eb31][SIP]]/AMFI
+
+* modern commands (kext* is legacy)
+- *kmutil showloaded*  - replaces kextstat
+- *kmutil load -p /path/foo.kext*  - replaces kextload
+- *systemextensionsctl list*  - show installed system extensions
+- *systemextensionsctl developer on*  - dev mode to sideload extensions
+- kernel extensions cache is now the *boot kernel collection* (kmutil create ... ), not the old prelinked kernel
+
+* relevance
+- driver attack surface moved to userspace dexts (still bugs, but a compromise is a sandboxed userspace proc not ring-0)
+- security products (EDR/AV) all had to rewrite from kext -> EndpointSecurity + Network Extension
